@@ -1,30 +1,28 @@
-getgenv().LunarisX = getgenv().LunarisX or {}
-local LunarisX = getgenv().LunarisX
+local LunarisX = getgenv().LunarisX or {}
+local autoskip = LunarisX.autoskip
+local SellAllTower = LunarisX.SellAllTower
+local AtWave = LunarisX.AtWave or 7
 
-local autoskip = LunarisX.autoskip == true
-local SellAllTower = LunarisX.SellAllTower == true
-local AtWave = LunarisX.AtWave
-local setupfarm = LunarisX.setupfarm
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local remoteFunction = ReplicatedStorage:WaitForChild("RemoteFunction")
 local player = game.Players.LocalPlayer
 local towerFolder = workspace:WaitForChild("Towers")
 
-local cashLabel = player:WaitForChild("PlayerGui")
+local cashLabel = player
+    :WaitForChild("PlayerGui")
     :WaitForChild("ReactUniversalHotbar")
     :WaitForChild("Frame")
     :WaitForChild("values")
     :WaitForChild("cash")
     :WaitForChild("amount")
 
-local waveContainer = player:WaitForChild("PlayerGui")
+local waveContainer = player
+    :WaitForChild("PlayerGui")
     :WaitForChild("ReactGameTopGameDisplay")
     :WaitForChild("Frame")
     :WaitForChild("wave")
     :WaitForChild("container")
 
-local gameOverGui = player:WaitForChild("PlayerGui")
+local gameOverGui = player
+    :WaitForChild("PlayerGui")
     :WaitForChild("ReactGameNewRewards")
     :WaitForChild("Frame")
     :WaitForChild("gameOver")
@@ -42,32 +40,37 @@ local function waitForCash(minAmount)
 end
 
 function placeTower(position, name, cost)
-    local args = {"Troops", "Place", {Rotation=CFrame.new(), Position=position}, name}
+    local args = { "Troops", "Pl\208\176ce", { Rotation = CFrame.new(), Position = position }, name }
     waitForCash(cost)
-    pcall(function() remoteFunction:InvokeServer(unpack(args)) end)
+    pcall(function()
+        remoteFunction:InvokeServer(unpack(args))
+    end)
     task.wait(1)
 end
 
 function upgradeTower(num, cost)
     local tower = towerFolder:GetChildren()[num]
     if tower then
-        local args = {"Troops", "Upgrade", "Set", {Troop=tower}}
+        local args = { "Troops", "Upgrade", "Set", { Troop = tower } }
         waitForCash(cost)
-        pcall(function() remoteFunction:InvokeServer(unpack(args)) end)
+        pcall(function()
+            remoteFunction:InvokeServer(unpack(args))
+        end)
         task.wait(1)
     end
 end
 
 function sellAllTowers()
     for _, tower in ipairs(towerFolder:GetChildren()) do
-        local args = {"Troops", "Sell", {Troop=tower}}
-        pcall(function() remoteFunction:InvokeServer(unpack(args)) end)
+        local args = { "Troops", "Se\108\108", { Troop = tower } }
+        pcall(function()
+            remoteFunction:InvokeServer(unpack(args))
+        end)
         task.wait(0.2)
     end
 end
 
--- Tự bán tower khi đạt wave chỉ định
-if SellAllTower then
+if SellAllTower == true then
     for _, label in ipairs(waveContainer:GetDescendants()) do
         if label:IsA("TextLabel") then
             label:GetPropertyChangedSignal("Text"):Connect(function()
@@ -80,30 +83,25 @@ if SellAllTower then
     end
 end
 
+gameOverGui:GetPropertyChangedSignal("Visible"):Connect(function()
+    if gameOverGui.Visible then
+        task.wait(5)
+        getgenv().LunarisX.setupfarm()
+    end
+end)
+getgenv().LunarisX.setupfarm()
+
 local function skipwave()
     task.spawn(function()
         while true do
-            pcall(function() remoteFunction:InvokeServer("Voting", "Skip") end)
+            pcall(function()
+                ReplicatedStorage:WaitForChild("RemoteFunction"):InvokeServer("Voting", "Skip")
+            end)
             task.wait(1)
         end
     end)
 end
 
-if autoskip then
+if autoskip == true then
     skipwave()
 end
-
--- 🔁 Gọi setupfarm ngay khi load script
-if typeof(setupfarm) == "function" then
-    setupfarm()
-end
-
--- 🔁 Reset setupfarm khi game over
-gameOverGui:GetPropertyChangedSignal("Visible"):Connect(function()
-    if gameOverGui.Visible then
-        task.wait(5)
-        if typeof(setupfarm) == "function" then
-            setupfarm()
-        end
-    end
-end)
