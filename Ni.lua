@@ -111,7 +111,7 @@ end
 gameOverGui:GetPropertyChangedSignal("Visible"):Connect(function()
     if gameOverGui.Visible then
         task.wait(3)
-        -- chờ 5 giây trước khi restart
+        voteskip()
         setupfarm()  -- gọi lại farm
     end
 end)
