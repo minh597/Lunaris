@@ -1,69 +1,78 @@
+-- 🌙 LunarisX Core Script
+
+local LunarisX = getgenv().LunarisX or {}
+local autoskip = LunarisX.autoskip
+local SellAllTower = LunarisX.SellAllTower
+local AtWave = LunarisX.AtWave
+local setupfarm = LunarisX.setupfarm
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local remoteFunction = ReplicatedStorage:WaitForChild("RemoteFunction")
-local player = game.Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
-local workspaceTowers = workspace:WaitForChild("Towers")
 
--- 💰 CASH LABEL
-local cashLabel = playerGui
+local player = game.Players.LocalPlayer
+local towerFolder = workspace:WaitForChild("Towers")
+
+local cashLabel = player
+    :WaitForChild("PlayerGui")
     :WaitForChild("ReactUniversalHotbar")
     :WaitForChild("Frame")
     :WaitForChild("values")
     :WaitForChild("cash")
     :WaitForChild("amount")
 
--- 🌊 WAVE DISPLAY
-local waveContainer = playerGui
+local waveContainer = player
+    :WaitForChild("PlayerGui")
     :WaitForChild("ReactGameTopGameDisplay")
     :WaitForChild("Frame")
     :WaitForChild("wave")
     :WaitForChild("container")
 
--- ☠️ GAME OVER GUI
-local gameOverGui = playerGui
+local gameOverGui = player
+    :WaitForChild("PlayerGui")
     :WaitForChild("ReactGameNewRewards")
     :WaitForChild("Frame")
     :WaitForChild("gameOver")
 
--- 💵 LẤY TIỀN
+-- 💰 Lấy tiền hiện tại
 local function getCash()
-    local text = cashLabel.Text or ""
-    local num = text:gsub("[^%d%-]", "")
-    return tonumber(num) or 0
+    local rawText = cashLabel.Text or ""
+    local cleaned = rawText:gsub("[^%d%-]", "")
+    return tonumber(cleaned) or 0
 end
 
-local function waitForCash(min)
-    while getCash() < min do
+local function waitForCash(minAmount)
+    while getCash() < minAmount do
         task.wait(1)
     end
 end
 
--- 📡 GỬI LỆNH AN TOÀN
-local function safeInvoke(args, cost)
+-- 🏗️ Đặt tower
+function placeTower(position, name, cost)
+    local args = { "Troops", "Place", { Rotation = CFrame.new(), Position = position }, name }
     waitForCash(cost)
     pcall(function()
         remoteFunction:InvokeServer(unpack(args))
     end)
-    task.wait(0.5)
+    task.wait(1)
 end
 
--- 🏗️ ĐẶT & NÂNG & BÁN TOWER
-function placeTower(position, name, cost)
-    local args = {"Troops", "Place", {Rotation = CFrame.new(), Position = position}, name}
-    safeInvoke(args, cost)
-end
-
-function upgradeTower(index, cost)
-    local tower = workspaceTowers:GetChildren()[index]
+-- ⬆️ Nâng cấp tower
+function upgradeTower(num, cost)
+    local tower = towerFolder:GetChildren()[num]
     if tower then
-        local args = {"Troops", "Upgrade", "Set", {Troop = tower}}
-        safeInvoke(args, cost)
+        local args = { "Troops", "Upgrade", "Set", { Troop = tower } }
+        waitForCash(cost)
+        pcall(function()
+            remoteFunction:InvokeServer(unpack(args))
+        end)
+        task.wait(1)
     end
 end
 
+-- 💸 Bán toàn bộ tower
 function sellAllTowers()
-    for _, tower in ipairs(workspaceTowers:GetChildren()) do
-        local args = {"Troops", "Sell", {Troop = tower}}
+    for _, tower in ipairs(towerFolder:GetChildren()) do
+        local args = { "Troops", "Sell", { Troop = tower } }
         pcall(function()
             remoteFunction:InvokeServer(unpack(args))
         end)
@@ -71,13 +80,13 @@ function sellAllTowers()
     end
 end
 
--- 💥 BÁN TOWER KHI ĐẾN WAVE CẦN
-if getgenv().LunarisX.SellAllTower == true then
+-- 🌊 Tự bán tower khi đến wave chỉ định
+if SellAllTower == true then
     for _, label in ipairs(waveContainer:GetDescendants()) do
         if label:IsA("TextLabel") then
             label:GetPropertyChangedSignal("Text"):Connect(function()
-                local wave = tonumber(label.Text:match("^(%d+)"))
-                if wave and wave == getgenv().LunarisX.AtWave then
+                local waveNum = tonumber(label.Text:match("^(%d+)"))
+                if waveNum and waveNum == AtWave then
                     sellAllTowers()
                 end
             end)
@@ -85,35 +94,28 @@ if getgenv().LunarisX.SellAllTower == true then
     end
 end
 
--- ⏩ AUTO SKIP
-local autoskip = getgenv().LunarisX.autoskip == true
-
-local function skipVote()
-    while autoskip do
-        pcall(function()
-            remoteFunction:InvokeServer("Voting", "Skip")
-        end)
-        task.wait(1)
-    end
+-- ⏩ Tự động skip wave
+local function skipwave()
+    task.spawn(function()
+        while true do
+            pcall(function()
+                remoteFunction:InvokeServer("Voting", "Skip")
+            end)
+            task.wait(1)
+        end
+    end)
 end
 
--- 🕐 SKIP 5 GIÂY SAU KHI FARM
-local function voteDelay()
-    autoskip = true
-    task.spawn(skipVote)
-    task.wait(5)
-    autoskip = false
+if autoskip == true then
+    skipwave()
 end
 
--- ☠️ GAME OVER => RESET FARM
+-- 🔁 Reset khi game over
 gameOverGui:GetPropertyChangedSignal("Visible"):Connect(function()
     if gameOverGui.Visible then
         task.wait(5)
-        getgenv().LunarisX.setupfarm()
-        voteDelay()
+        if typeof(setupfarm) == "function" then
+            setupfarm()
+        end
     end
 end)
-
--- 🚀 BẮT ĐẦU FARM LẦN ĐẦU
-getgenv().LunarisX.setupfarm()
-voteDelay()
