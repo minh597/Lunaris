@@ -13,7 +13,7 @@
             min-height: 100vh;
             
             /* --- NỀN WEB CỦA BẠN (CUSTOM BACKGROUND IMAGE) --- */
-            background-image: url('https://i.postimg.cc/0Q0DmQmj/lunarisx-logo-description-background-a-deep-space-bla.jpg'); 
+            background-image: url('https://i.postimg.cc/0Q0DmRmj/lunarisx-logo-description-background-a-deep-space-bla.jpg'); 
             background-size: cover;
             background-attachment: fixed; 
             background-position: center;
@@ -102,7 +102,7 @@
                 <div class="flex items-center justify-between mb-4 p-3 bg-gray-700 rounded-lg border border-red-500/50">
                     <label for="hardcoreMode" class="text-lg font-bold text-red-400 flex items-center">
                         <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                        Hardcore Mode (1.5x Cost)
+                        Hardcore Mode
                     </label>
                     <input type="checkbox" id="hardcoreMode" class="w-5 h-5 text-red-600 bg-gray-900 border-gray-300 rounded focus:ring-red-500">
                 </div>
@@ -121,7 +121,15 @@ upgradeTower(2, cost) -- Sniper Lvl 1' class="w-full p-3 rounded-lg bg-gray-700 
 
             <!-- Column 2: Results -->
             <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
-                <h2 class="text-xl font-semibold mb-4 text-blue-400">💡 Results (Modified Code)</h2>
+                <!-- Nút Copy All được thêm vào đây -->
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-blue-400">💡 Results (Modified Code)</h2>
+                    <button id="copyButton" onclick="copyOutput()" class="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition duration-200">
+                        Copy All
+                    </button>
+                </div>
+                <!-- Kết thúc Nút Copy All -->
+                
                 <div id="outputContainer" class="p-4 bg-gray-700 rounded-lg border border-gray-600 min-h-[16rem]">
                     <pre id="outputText" class="text-sm text-gray-200">Paste your code on the left and press the button to see the result.</pre>
                 </div>
@@ -179,13 +187,13 @@ upgradeTower(2, cost) -- Sniper Lvl 1' class="w-full p-3 rounded-lg bg-gray-700 
     <div id="sourceModal" class="modal">
         <div class="modal-content">
             <div class="flex justify-between items-center border-b pb-2 border-gray-600 mb-4">
-                <h3 class="text-xl font-bold text-blue-400">Source Information</h3>
+                <h3 class="text-xl font-bold text-blue-400">Tomato Sauce</h3>
                 <button onclick="closeModal('sourceModal')" class="text-gray-400 hover:text-white text-2xl font-bold leading-none">&times;</button>
             </div>
-            <p class="text-gray-300 mb-4">This cost replacer tool was created by a community member.</p>
+            <p class="text-gray-300 mb-4">This cost replacer tool was created by LunarisX Hub</p>
             <p class="text-gray-300">
-                For more useful tools and resources, visit:
-                <a href="#" class="text-blue-400 hover:underline font-semibold" onclick="return false;">your-community-website.com</a>
+                Join Discord
+                <a href="#" class="text-blue-400 hover:underline font-semibold" onclick="return false;">https://discord.gg/qfENYnhg</a>
             </p>
         </div>
     </div>
@@ -237,6 +245,16 @@ upgradeTower(2, cost) -- Sniper Lvl 1' class="w-full p-3 rounded-lg bg-gray-700 
         // Stores the tower name mapped to its placement index (1-based)
         let towerIndexMap = {}; 
         
+        // Cần phải lưu trữ các tham chiếu toàn cục để sử dụng trong các hàm
+        let outputTextElement;
+        let processButton;
+        let hardcoreModeCheckbox;
+        let inputCodeTextarea;
+        let costTableBody;
+        let modalTableBody;
+        let modalTitle;
+
+
         /**
          * Calculates the Hardcore Cost (1.5x rounded up to the nearest integer).
          * @param {number} baseCost - The normal cost.
@@ -261,32 +279,25 @@ upgradeTower(2, cost) -- Sniper Lvl 1' class="w-full p-3 rounded-lg bg-gray-700 
             return isHardcore ? getHardcoreCost(baseCost) : baseCost;
         }
         
-        // Regex to capture placeTower command, allowing "cost" or cost, and crucially capturing the comma/space before and after the cost placeholder
+        // Regex để bắt lệnh placeTower và placeholder chi phí (cost hoặc "cost")
         const getPlaceRegex = () => {
-             // Group 1: Prefix up to the tower name's closing quote (e.g., placeTower(Vec3, "Scout")
-             // Group 2: Tower Name (e.g., Scout)
-             // Group 3: The separator after tower name and before cost (e.g., , )
-             // Group 4: The cost placeholder, allowing "cost" or cost (quoted or unquoted)
-             // Group 5: The closing parenthesis and anything after (e.g., ) -- Comment)
-             
-             // Capture the entire cost argument, including surrounding quotes if present:
-             // ([\s\S]*?,\s*['"]) - Start of function call up to tower name's closing quote
-             // ([^'"]+?) - Tower name
-             // (['"]\s*,\s*) - Separator after tower name, including its closing quote, and before the cost
-             // (['"]?([cC][oO][sS][t])['"]?) - Cost placeholder (quoted or unquoted)
-             // (\s*\)) - Closing parenthesis/suffix
-             
-             // The crucial change is that we want to capture the exact structure of the cost argument
+             // Group 1: (\s*place\s*Tower\s*\([\s\S]*?,\s*['"]) -> Prefix up to tower name's closing quote
+             // Group 2: ([^'"]+?) -> Tower Name
+             // Group 3: (['"]\s*,\s*) -> Separator after tower name, including its closing quote, and before the cost
+             // Group 4: (['"]?([cC][oO][sS][t])['"]?) -> Cost placeholder (quoted or unquoted)
+             // Group 5: ([cC][oO][sS][t]) -> inner cost keyword
+             // Group 6: (\s*\)) -> Closing parenthesis/suffix
              return /(\s*place\s*Tower\s*\([\s\S]*?,\s*['"])([^'"]+?)(['"]\s*,\s*)(['"]?([cC][oO][sS][t])['"]?)(\s*\))/i;
         };
 
-        // Regex to capture upgradeTower command, allowing "cost" or cost
+        // Regex để bắt lệnh upgradeTower và placeholder chi phí
         const getUpgradeRegex = () => {
-             // Group 1: Prefix up to the index (e.g., upgradeTower()
-             // Group 2: Tower Index (e.g., 1)
-             // Group 3: The separator after index and before cost (e.g., , )
-             // Group 4: The cost placeholder, allowing "cost" or cost (quoted or unquoted)
-             // Group 5: The closing parenthesis and anything after (e.g., ) -- Comment)
+             // Group 1: (\s*upgrade\s*Tower\s*\([\s\S]*?) -> Prefix up to the index
+             // Group 2: (\d+) -> Tower Index (e.g., 1)
+             // Group 3: (\s*,\s*) -> Separator after index and before cost
+             // Group 4: (['"]?([cC][oO][sS][t])['"]?) -> Cost placeholder (quoted or unquoted)
+             // Group 5: ([cC][oO][sS][t]) -> inner cost keyword
+             // Group 6: (\s*\)) -> Closing parenthesis/suffix
             return /(\s*upgrade\s*Tower\s*\([\s\S]*?)(\d+)(\s*,\s*)(['"]?([cC][oO][sS][t])['"]?)(\s*\))/i;
         };
 
@@ -300,18 +311,17 @@ upgradeTower(2, cost) -- Sniper Lvl 1' class="w-full p-3 rounded-lg bg-gray-700 
             towerIndexMap = {};
             let index = 1;
             
-            // NOTE: We use a simplified regex for pre-processing just to get the tower name
+            // Regex chỉ để lấy tên tháp
             const preProcessRegex = /(\s*place\s*Tower\s*\([\s\S]*?,\s*['"])([^'"]+?)(['"]\s*,\s*)/i;
             const lines = inputCode.split('\n');
 
             lines.forEach(line => {
-                // We only care about lines containing placeTower commands for indexing
                 if (line.toLowerCase().includes('placetower')) {
                     
                     const placeMatch = line.match(preProcessRegex);
                     
                     if (placeMatch) {
-                        // The tower name is captured in Group 2
+                        // Tên tháp nằm ở Group 2
                         const towerName = placeMatch[2].trim();
                         if (towerName) {
                             towerIndexMap[index] = towerName;
@@ -338,7 +348,7 @@ upgradeTower(2, cost) -- Sniper Lvl 1' class="w-full p-3 rounded-lg bg-gray-700 
             let outputCode = '';
             let matchesFound = 0;
             
-            // Map to track the current upgrade level for each Tower Index 
+            // Map để theo dõi cấp độ nâng cấp hiện tại cho mỗi Index
             const upgradeCounterMap = {}; 
             Object.keys(towerIndexMap).forEach(index => {
                 upgradeCounterMap[index] = 0;
@@ -354,198 +364,259 @@ upgradeTower(2, cost) -- Sniper Lvl 1' class="w-full p-3 rounded-lg bg-gray-700 
                 let processedLine = line;
                 let lineReplaced = false;
 
-                // --- 1. PROCESS placeTower (Ensures cost is always unquoted) ---
+                // --- 1. PROCESS placeTower (Thay thế chi phí đặt tháp) ---
                 if (line.toLowerCase().includes('placetower')) {
-                    processedLine = line.replace(placeRegex, (match, prefix, towerName, separator, costArgument, costPlaceholder, endSuffix) => {
-                        matchesFound++;
-                        lineReplaced = true;
-                        const cleanTowerName = towerName.trim(); 
-                        const finalCost = lookupCost(cleanTowerName, "Place", isHardcore);
+                    const placeMatch = line.match(placeRegex);
+                    
+                    if (placeMatch) {
+                        const towerName = placeMatch[2].trim(); // Tên tháp
+                        const finalCost = lookupCost(towerName, "Place", isHardcore);
                         
-                        // We replace Group 4 (costArgument) with the numeric cost.
-                        if (finalCost !== null) {
-                            // Replacement: Rebuild the line with the numeric cost (unquoted)
-                            return `${prefix}${cleanTowerName}${separator}${finalCost}${endSuffix}`;
+                        // Sử dụng .replace với callback để tái cấu trúc dòng lệnh
+                        processedLine = line.replace(placeRegex, (match, prefixToTowerName, towerName, separatorToCost, costPlaceholder, costKeyword, endSuffix) => {
+                             if (finalCost !== null) {
+                                matchesFound++;
+                                lineReplaced = true;
+                                // Thay thế placeholder cost bằng chi phí số (không trích dẫn)
+                                return `${prefixToTowerName}${towerName}${separatorToCost}${finalCost}${endSuffix}`;
+                            } else {
+                                // Giữ nguyên nếu không tìm thấy chi phí
+                                console.warn(`[Place] Tower name not found or cost missing: ${towerName}`);
+                                return match; 
+                            }
+                        });
+                    }
+                }
+
+                // --- 2. PROCESS upgradeTower (Thay thế chi phí nâng cấp, theo dõi cấp độ) ---
+                else if (line.toLowerCase().includes('upgradetower')) {
+                    const upgradeMatch = line.match(upgradeRegex);
+
+                    if (upgradeMatch) {
+                        
+                        // Group 2: Tower Index (e.g., 1)
+                        const towerIndex = parseInt(upgradeMatch[2], 10);
+                        const towerName = towerIndexMap[towerIndex]; 
+
+                        if (towerName) {
+                            // Tăng bộ đếm cấp độ cho Index này (bắt đầu từ 1)
+                            upgradeCounterMap[towerIndex] = (upgradeCounterMap[towerIndex] || 0) + 1;
+                            const currentLevel = upgradeCounterMap[towerIndex];
+                            const costType = `Upgrade ${currentLevel}`;
+                            const finalCost = lookupCost(towerName, costType, isHardcore);
+                            
+                            if (finalCost !== null) {
+                                // Sử dụng .replace với callback để tái cấu trúc dòng lệnh
+                                processedLine = line.replace(upgradeRegex, (match, prefixToTowerIndex, index, separatorToCost, costPlaceholder, costKeyword, endSuffix) => {
+                                    matchesFound++;
+                                    lineReplaced = true;
+                                    // Thay thế placeholder cost bằng chi phí số (không trích dẫn)
+                                    return `${prefixToTowerIndex}${index}${separatorToCost}${finalCost}${endSuffix}`;
+                                });
+
+                            } else {
+                                // Nếu không tìm thấy chi phí (ví dụ: đã max level), hoàn nguyên bộ đếm và cảnh báo
+                                console.warn(`[Upgrade] Max level reached or cost not defined for ${towerName} (Index ${towerIndex}, Level ${currentLevel}). Leaving 'cost'.`);
+                                upgradeCounterMap[towerIndex]--; // Hoàn nguyên bộ đếm
+                            }
                         } else {
-                            return match + ` --[[ ERROR: Place Cost not found for "${cleanTowerName}" ]]`;
+                            console.warn(`[Upgrade] Index ${towerIndex} not found in placement map.`);
                         }
-                    });
-                } 
-                
-                // --- 2. PROCESS upgradeTower (Ensures cost is always unquoted) ---
-                else if (line.toLowerCase().includes('upgradetower') && !lineReplaced) {
-                    processedLine = line.replace(upgradeRegex, (match, prefix, indexValue, separator, costArgument, costPlaceholder, endSuffix) => {
-                        matchesFound++;
-                        lineReplaced = true;
-                        
-                        const towerIndex = parseInt(indexValue, 10);
-                        
-                        // Increment the level counter for this specific tower index
-                        upgradeCounterMap[towerIndex] = (upgradeCounterMap[towerIndex] || 0) + 1;
-                        const currentLevel = upgradeCounterMap[towerIndex];
-                        
-                        const cleanTowerName = towerIndexMap[towerIndex];
-                        const costType = `Upgrade ${currentLevel}`;
-
-                        if (!cleanTowerName) {
-                            return match + ` --[[ ERROR: Tower Index ${towerIndex} not found in placeTower list. ]]`;
-                        }
-
-                        // Lookup cost for "Upgrade X"
-                        const finalCost = lookupCost(cleanTowerName, costType, isHardcore);
-
-                        if (finalCost !== null) {
-                            // Replacement: Rebuild the line with the numeric cost (unquoted)
-                            const replacedMatch = `${prefix}${towerIndex}${separator}${finalCost}${endSuffix}`;
-                            // Add an informative comment
-                            return `${replacedMatch} --[[ ${cleanTowerName} Lvl ${currentLevel} (${costType}) ]]`;
-                        } else {
-                            // Upgrade cost not found
-                            return match + ` --[[ ERROR: Upgrade ${currentLevel} Cost not found for "${cleanTowerName}" (Index ${towerIndex}). Max Level Reached? ]]`;
-                        }
-                    });
+                    }
                 }
 
                 outputCode += processedLine + '\n';
-            }); // End of lines.forEach
+            }); // end lines.forEach
+
+            // Final processing/cleanup
+            outputCode = outputCode.trim();
 
             if (matchesFound === 0) {
-                // If neither regex found any matching pattern
-                return "❌ ERROR: Invalid format. Found no 'placeTower(..., cost)' or 'upgradeTower(INDEX, cost)' commands using the 'cost' keyword (quoted or unquoted). Please check the syntax.";
+                 return "⚠️ No 'placeTower' or 'upgradeTower' commands with 'cost' placeholder found.";
             }
             
-            // Clean up trailing newline added by loop
-            return outputCode.trimEnd(); 
+            return outputCode;
         }
 
-        // --- Modal Functions ---
-        const upgradeModal = document.getElementById('upgradeModal');
-        const sourceModal = document.getElementById('sourceModal');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalTableBody = document.getElementById('modalTableBody');
+        // --- CLIPBOARD FUNCTIONALITY (Chức năng Sao chép) ---
 
         /**
-         * Opens the Tower Upgrade Cost modal.
-         * @param {string} towerName 
+         * Fallback mechanism using document.execCommand('copy')
          */
-        function openModal(towerName) {
-            const data = TOWER_COSTS[towerName];
-            if (!data) return;
+        function fallbackCopy(text, button, originalText) {
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = text;
+            tempTextArea.style.position = 'fixed';
+            tempTextArea.style.left = '-9999px';
+            tempTextArea.style.top = '0';
 
-            modalTitle.textContent = `Tower Upgrade Costs: ${towerName}`;
-            let tableHtml = '';
-            let isEven = false;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.focus();
+            tempTextArea.select();
 
-            // Sort keys to ensure Upgrade 1, 2, 3... are in order
-            const upgradeKeys = Object.keys(data)
-                .filter(key => key.startsWith('Upgrade'))
-                .sort((a, b) => {
-                    const levelA = parseInt(a.split(' ')[1]);
-                    const levelB = parseInt(b.split(' ')[1]);
-                    return levelA - levelB;
-                });
-
-            if (upgradeKeys.length === 0) {
-                modalTableBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-gray-400">No detailed upgrade data available for this Tower.</td></tr>`;
-            } else {
-                upgradeKeys.forEach(key => {
-                    const baseCost = data[key];
-                    const hcCost = getHardcoreCost(baseCost);
-                    const level = key.split(' ')[1]; // Extract level number
-
-                    const rowClass = isEven ? 'bg-gray-800' : 'bg-gray-700/50';
-                    tableHtml += `<tr class="${rowClass} border-b border-gray-700">`;
-                    tableHtml += `<td class="p-2 font-medium">Level ${level}</td>`;
-                    tableHtml += `<td class="p-2 text-right text-green-400 font-semibold">$${baseCost.toLocaleString('en-US')}</td>`;
-                    tableHtml += `<td class="p-2 text-right text-red-400 font-semibold">$${hcCost.toLocaleString('en-US')}</td>`;
-                    tableHtml += `</tr>`;
-                    isEven = !isEven;
-                });
-                modalTableBody.innerHTML = tableHtml;
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    button.textContent = 'Đã sao chép! ✅';
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                    }, 1500);
+                } else {
+                    button.textContent = 'Thất bại ❌';
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                    }, 2000);
+                }
+            } catch (err) {
+                button.textContent = 'Lỗi ❌';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 2000);
             }
 
-            upgradeModal.style.display = "block";
+            document.body.removeChild(tempTextArea);
         }
         
         /**
-         * Opens the Source Information modal.
+         * Copies the content of the outputText pre element to the clipboard.
+         * Provides user feedback by momentarily changing the button text.
          */
-        function openSourceModal() {
-            sourceModal.style.display = "block";
+        function copyOutput() {
+            const textToCopy = outputTextElement.textContent;
+            const copyButton = document.getElementById('copyButton');
+            const originalText = 'Copy All';
+
+            if (textToCopy.includes("Paste your code") || textToCopy.includes("No 'placeTower'")) {
+                 copyButton.textContent = 'Không có code để copy!';
+                 setTimeout(() => { copyButton.textContent = originalText; }, 2000);
+                 return;
+            }
+
+            // 1. Thử dùng API clipboard hiện đại
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy)
+                    .then(() => {
+                        copyButton.textContent = 'Đã sao chép! ✅';
+                        setTimeout(() => {
+                            copyButton.textContent = originalText;
+                        }, 1500);
+                    })
+                    .catch(err => {
+                        // 2. Fallback nếu API hiện đại lỗi
+                        fallbackCopy(textToCopy, copyButton, originalText);
+                    });
+            } else {
+                // 2. Fallback cho trình duyệt cũ hoặc môi trường iframe
+                fallbackCopy(textToCopy, copyButton, originalText);
+            }
+        }
+
+        // --- UI & EVENT HANDLERS ---
+
+        /**
+         * Fills the main cost table with placement costs.
+         */
+        function populateCostTable() {
+            costTableBody.innerHTML = '';
+            const isHardcore = hardcoreModeCheckbox.checked;
+
+            const sortedTowerNames = Object.keys(TOWER_COSTS).sort();
+
+            sortedTowerNames.forEach(name => {
+                const normalCost = TOWER_COSTS[name]["Place"];
+                const hardcoreCost = getHardcoreCost(normalCost);
+
+                const row = document.createElement('tr');
+                row.className = 'border-t border-gray-700 hover:bg-gray-700 cursor-pointer';
+                row.setAttribute('onclick', `showUpgradeCosts('${name}', ${isHardcore})`);
+
+                row.innerHTML = `
+                    <td class="p-2 text-left font-semibold text-green-300">${name}</td>
+                    <td class="p-2 text-right">${normalCost}</td>
+                    <td class="p-2 text-right text-red-400">${hardcoreCost}</td>
+                `;
+                costTableBody.appendChild(row);
+            });
         }
 
         /**
-         * Closes a specified modal.
+         * Shows the modal with detailed upgrade costs for a selected tower.
+         * @param {string} towerName - Name of the tower.
+         * @param {boolean} isHardcore - Current Hardcore setting.
+         */
+        function showUpgradeCosts(towerName, isHardcore) {
+            modalTitle.textContent = `${towerName} - Upgrade Costs (${isHardcore ? 'Hardcore' : 'Normal'})`;
+            modalTableBody.innerHTML = '';
+            const towerData = TOWER_COSTS[towerName];
+            
+            if (!towerData) return;
+
+            // Lọc ra các chi phí nâng cấp (bắt đầu bằng "Upgrade ")
+            const upgradeLevels = Object.keys(towerData)
+                .filter(key => key.startsWith("Upgrade "))
+                .sort((a, b) => parseInt(a.split(' ')[1]) - parseInt(b.split(' ')[1]));
+
+            upgradeLevels.forEach((costType, index) => {
+                const normalCost = towerData[costType];
+                const hardcoreCost = getHardcoreCost(normalCost);
+                const level = index + 1;
+
+                const row = document.createElement('tr');
+                row.className = 'border-t border-gray-700';
+                row.innerHTML = `
+                    <td class="p-2 text-left font-semibold">Level ${level}</td>
+                    <td class="p-2 text-right">${normalCost}</td>
+                    <td class="p-2 text-right text-red-400">${isHardcore ? hardcoreCost : '-'}</td>
+                `;
+                modalTableBody.appendChild(row);
+            });
+
+            document.getElementById('upgradeModal').style.display = 'block';
+        }
+
+        /**
+         * General function to close any modal.
          * @param {string} modalId - The ID of the modal to close.
          */
         function closeModal(modalId) {
-            document.getElementById(modalId).style.display = "none";
+            document.getElementById(modalId).style.display = 'none';
         }
-        
-        // Close modal when clicking outside of it
-        window.onclick = function(event) {
-            if (event.target == upgradeModal) {
-                closeModal('upgradeModal');
-            }
-            if (event.target == sourceModal) {
-                closeModal('sourceModal');
-            }
+
+        /**
+         * Opens the Source Info modal.
+         */
+        function openSourceModal() {
+            document.getElementById('sourceModal').style.display = 'block';
         }
 
 
-        // --- UI Logic ---
-        document.addEventListener('DOMContentLoaded', () => {
-            const processButton = document.getElementById('processButton');
-            const inputCodeElement = document.getElementById('inputCode');
-            const outputTextElement = document.getElementById('outputText');
-            const costTableBody = document.getElementById('costTableBody');
-            const hardcoreModeCheckbox = document.getElementById('hardcoreMode');
+        window.onload = function() {
+            // Gán các tham chiếu DOM
+            outputTextElement = document.getElementById('outputText');
+            processButton = document.getElementById('processButton');
+            hardcoreModeCheckbox = document.getElementById('hardcoreMode');
+            inputCodeTextarea = document.getElementById('inputCode');
+            costTableBody = document.getElementById('costTableBody');
+            modalTableBody = document.getElementById('modalTableBody');
+            modalTitle = document.getElementById('modalTitle');
 
-            // Initialize the Place cost table
-            function initCostTable() {
-                let tableHtml = '';
-                let isEven = false;
-                for (const tower in TOWER_COSTS) {
-                    const data = TOWER_COSTS[tower];
-                    const placeCost = data['Place'] || 0;
-                    const hcPlace = getHardcoreCost(placeCost);
-                    
-                    const rowClass = isEven ? 'bg-gray-800' : 'bg-gray-700/50';
-                    
-                    // Add onclick event to row to open modal
-                    tableHtml += `<tr class="${rowClass} hover:bg-gray-700 border-b border-gray-700 cursor-pointer transition duration-150 ease-in-out" onclick="openModal('${tower}')">`;
-                    tableHtml += `<td class="p-2 font-medium text-blue-300 hover:underline">${tower}</td>`;
-                    
-                    // Place Cost (Normal / Hardcore)
-                    tableHtml += `<td class="p-2 text-right">
-                        <span class="text-green-400">$${placeCost.toLocaleString('en-US')}</span>
-                    </td>`;
-                    tableHtml += `<td class="p-2 text-right">
-                        <span class="text-red-400 font-semibold">$${hcPlace.toLocaleString('en-US')}</span>
-                    </td>`;
-                    
-                    tableHtml += `</tr>`;
-                    isEven = !isEven;
-                }
-                costTableBody.innerHTML = tableHtml;
-            }
-
-            // Set input box to be empty
-            inputCodeElement.value = '';
-
-            // Handle button click
+            // Thiết lập Event Listeners
             processButton.addEventListener('click', () => {
-                const inputCode = inputCodeElement.value;
+                const inputCode = inputCodeTextarea.value;
                 const isHardcore = hardcoreModeCheckbox.checked;
-                
                 const result = processCode(inputCode, isHardcore);
-                
-                // Display result
                 outputTextElement.textContent = result;
+                
+                // Cập nhật lại bảng chi phí đặt tháp ngay cả khi chỉ nhấn Process
+                populateCostTable(); 
             });
 
-            initCostTable();
-        });
+            hardcoreModeCheckbox.addEventListener('change', populateCostTable);
+
+            // Khởi tạo bảng chi phí lần đầu
+            populateCostTable();
+        };
+
     </script>
 </body>
 </html>
