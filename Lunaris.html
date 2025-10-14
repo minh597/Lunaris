@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LunarisX Cost Tool</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #c9d1d9;
+            min-height: 100vh;
+            
+            /* --- NỀN WEB CỦA BẠN (CUSTOM BACKGROUND IMAGE) --- */
+            background-image: url('https://i.postimg.cc/0Q0DmQmj/lunarisx-logo-description-background-a-deep-space-bla.jpg'); 
+            background-size: cover;
+            background-attachment: fixed; 
+            background-position: center;
+            background-color: #0d1117; /* Màu dự phòng */
+            /* ------------------------------------------------ */
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        /* Điều chỉnh màu nền của các box nội dung để hình nền xuyên qua */
+        .bg-gray-800 {
+            background-color: rgba(31, 41, 55, 0.9); /* Dark Blue/Gray với độ trong suốt 90% */
+            backdrop-filter: blur(2px); /* Hiệu ứng mờ nhẹ cho nền */
+        }
+        .bg-gray-700, .bg-gray-700\/50, .modal-content {
+            background-color: rgba(55, 65, 81, 0.95) !important; 
+        }
+
+        /* Custom modal styles for displaying upgrade costs */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.8);
+        }
+        .modal-content {
+            /* Đã được điều chỉnh bằng class .bg-gray-700 ở trên */
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #374151;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+        /* Fixed button style */
+        #sourceButton {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 990;
+            cursor: pointer;
+            padding: 10px 15px;
+            font-size: 14px;
+            font-weight: bold;
+            background-color: #3b82f6; /* Blue 500 */
+            color: white;
+            border-radius: 9999px; /* Fully rounded */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: background-color 0.2s;
+        }
+        #sourceButton:hover {
+            background-color: #2563eb; /* Blue 600 */
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-3xl font-bold text-green-400 mb-6 border-b border-gray-700 pb-2">
+            LunarisX Cost Tool
+        </h1>
+        <p class="text-gray-400 mb-6">
+            Tool tracks Tower placement order (Index) and **automatically calculates the current upgrade level** (Level 1, Level 2, etc.) based on the number of `upgradeTower` calls for each Index.
+            <br>
+            **Supported cost formats (flexible for `cost` keyword):**
+            <ul class="list-disc list-inside ml-4 mt-2 text-sm text-gray-300">
+                <li>Place: `placeTower(pos, "TowerName", cost)`</li>
+                <li>Upgrade: `upgradeTower(<span class="text-red-400">INDEX</span>, cost)`</li>
+            </ul>
+        </p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- Column 1: Input and Settings -->
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold mb-4 text-yellow-400">📝 Input & Settings</h2>
+
+                <!-- Hardcore Mode Toggle -->
+                <div class="flex items-center justify-between mb-4 p-3 bg-gray-700 rounded-lg border border-red-500/50">
+                    <label for="hardcoreMode" class="text-lg font-bold text-red-400 flex items-center">
+                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        Hardcore Mode (1.5x Cost)
+                    </label>
+                    <input type="checkbox" id="hardcoreMode" class="w-5 h-5 text-red-600 bg-gray-900 border-gray-300 rounded focus:ring-red-500">
+                </div>
+                
+                <label for="inputCode" class="block text-sm font-medium mb-1 text-gray-300">Paste your code (example):</label>
+                <textarea id="inputCode" rows="6" placeholder='placeTower(Vec3, "Scout", "cost") -- Index 1
+placeTower(Vec3, "Sniper", cost) -- Index 2
+upgradeTower(1, cost) -- Scout Lvl 1
+upgradeTower(1, "cost") -- Scout Lvl 2
+upgradeTower(2, cost) -- Sniper Lvl 1' class="w-full p-3 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-green-500 focus:border-green-500 mb-4"></textarea>
+
+                <button id="processButton" class="w-full py-3 px-4 bg-green-600 hover:bg-green-700 rounded-lg text-white font-bold transition duration-200 shadow-md shadow-green-900/50">
+                    🔍 Lookup & Replace Costs
+                </button>
+            </div>
+
+            <!-- Column 2: Results -->
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold mb-4 text-blue-400">💡 Results (Modified Code)</h2>
+                <div id="outputContainer" class="p-4 bg-gray-700 rounded-lg border border-gray-600 min-h-[16rem]">
+                    <pre id="outputText" class="text-sm text-gray-200">Paste your code on the left and press the button to see the result.</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tower Placement Cost Table -->
+        <div class="mt-8">
+            <h2 class="text-xl font-semibold mb-3 text-red-400">⚠️ Tower Placement Costs (Click Tower Name for Upgrade Details)</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm rounded-lg overflow-hidden bg-gray-800">
+                    <thead>
+                        <tr class="bg-gray-700 text-red-300">
+                            <th class="p-2 text-left">Tower</th>
+                            <th class="p-2 text-right">Normal Cost</th>
+                            <th class="p-2 text-right">Hardcore Cost (x1.5)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="costTableBody">
+                        <!-- Data populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Floating Source Button -->
+    <div id="sourceButton" onclick="openSourceModal()">
+        Source Info
+    </div>
+
+    <!-- Modal for Upgrade Costs -->
+    <div id="upgradeModal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center border-b pb-2 border-gray-600 mb-4">
+                <h3 id="modalTitle" class="text-xl font-bold text-yellow-400">Tower Upgrade Costs</h3>
+                <button onclick="closeModal('upgradeModal')" class="text-gray-400 hover:text-white text-2xl font-bold leading-none">&times;</button>
+            </div>
+            <table class="min-w-full text-sm rounded-lg overflow-hidden bg-gray-800">
+                <thead>
+                    <tr class="bg-gray-700 text-red-300">
+                        <th class="p-2 text-left">Level</th>
+                        <th class="p-2 text-right">Normal Cost</th>
+                        <th class="p-2 text-right">Hardcore Cost</th>
+                    </tr>
+                </thead>
+                <tbody id="modalTableBody">
+                    <!-- Upgrade data goes here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Modal for Source Info -->
+    <div id="sourceModal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center border-b pb-2 border-gray-600 mb-4">
+                <h3 class="text-xl font-bold text-blue-400">Source Information</h3>
+                <button onclick="closeModal('sourceModal')" class="text-gray-400 hover:text-white text-2xl font-bold leading-none">&times;</button>
+            </div>
+            <p class="text-gray-300 mb-4">This cost replacer tool was created by a community member.</p>
+            <p class="text-gray-300">
+                For more useful tools and resources, visit:
+                <a href="#" class="text-blue-400 hover:underline font-semibold" onclick="return false;">your-community-website.com</a>
+            </p>
+        </div>
+    </div>
+
+
+    <script>
+        // --- TOWER COST DATA ---
+        // Cost data is derived from standard Tower Defense Simulator values, with Trapper modified per user request.
+        const TOWER_COSTS = {
+            "Scout": { "Place": 150, "Upgrade 1": 50, "Upgrade 2": 200, "Upgrade 3": 950, "Upgrade 4": 2500 },
+            "Sniper": { "Place": 300, "Upgrade 1": 150, "Upgrade 2": 500, "Upgrade 3": 1500, "Upgrade 4": 4000 },
+            "Paintballer": { "Place": 400, "Upgrade 1": 200, "Upgrade 2": 675, "Upgrade 3": 1000, "Upgrade 4": 2250, "Upgrade 5": 4000 },
+            "Demoman": { "Place": 575, "Upgrade 1": 150, "Upgrade 2": 475, "Upgrade 3": 1650, "Upgrade 4": 6250 },
+            "Hunter": { "Place": 750, "Upgrade 1": 200, "Upgrade 2": 800, "Upgrade 3": 3250, "Upgrade 4": 9400 },
+            "Soldier": { "Place": 350, "Upgrade 1": 100, "Upgrade 2": 400, "Upgrade 3": 1500, "Upgrade 4": 4750 },
+            "Militant": { "Place": 700, "Upgrade 1": 200, "Upgrade 2": 900, "Upgrade 3": 2750, "Upgrade 4": 9000 },
+            "Freezer": { "Place": 425, "Upgrade 1": 225, "Upgrade 2": 650, "Upgrade 3": 2000, "Upgrade 4": 4500 },
+            "Assassin": { "Place": 200, "Upgrade 1": 250, "Upgrade 2": 1000, "Upgrade 3": 2750, "Upgrade 4": 7600 },
+            "Shotgunner": { "Place": 300, "Upgrade 1": 150, "Upgrade 2": 950, "Upgrade 3": 2500, "Upgrade 4": 6500 },
+            "Pyromancer": { "Place": 850, "Upgrade 1": 350, "Upgrade 2": 950, "Upgrade 3": 1500, "Upgrade 4": 3800, "Upgrade 5": 9000 },
+            "Ace Pilot": { "Place": 550, "Upgrade 1": 200, "Upgrade 2": 350, "Upgrade 3": 1850, "Upgrade 4": 3200, "Upgrade 5": 8000 },
+            "Medic": { "Place": 500, "Upgrade 1": 500, "Upgrade 2": 750, "Upgrade 3": 2700, "Upgrade 4": 6000, "Upgrade 5": 16000 },
+            "Farm": { "Place": 250, "Upgrade 1": 200, "Upgrade 2": 550, "Upgrade 3": 1000, "Upgrade 4": 2500, "Upgrade 5": 5000 },
+            "Rocketeer": { "Place": 1500, "Upgrade 1": 250, "Upgrade 2": 1750, "Upgrade 3": 6500, "Upgrade 4": 20000 },
+            // --- UPDATED TRAPPER COST ---
+            "Trapper": { "Place": 500, "Upgrade 1": 500, "Upgrade 2": 1500, "Upgrade 3": 5000, "Upgrade 4": 13500 },
+            // ----------------------------
+            "Military Base": { "Place": 400, "Upgrade 1": 200, "Upgrade 2": 400, "Upgrade 3": 1750, "Upgrade 4": 7500, "Upgrade 5": 25000 },
+            "Crook Boss": { "Place": 600, "Upgrade 1": 300, "Upgrade 2": 900, "Upgrade 3": 4250, "Upgrade 4": 20000 },
+            "Electroshocker": { "Place": 725, "Upgrade 1": 300, "Upgrade 2": 600, "Upgrade 3": 2000, "Upgrade 4": 5000, "Upgrade 5": 15000 },
+            "Commander": { "Place": 850, "Upgrade 1": 300, "Upgrade 2": 2500, "Upgrade 3": 5500, "Upgrade 4": 15000 },
+            "Warden": { "Place": 1000, "Upgrade 1": 400, "Upgrade 2": 1250, "Upgrade 3": 4500, "Upgrade 4": 15000 },
+            "Cowboy": { "Place": 500, "Upgrade 1": 150, "Upgrade 2": 550, "Upgrade 3": 1500, "Upgrade 4": 3000, "Upgrade 5": 5250 },
+            "DJ Booth": { "Place": 1200, "Upgrade 1": 300, "Upgrade 2": 1250, "Upgrade 3": 3000, "Upgrade 4": 8000, "Upgrade 5": 20000 },
+            "Minigunner": { "Place": 1850, "Upgrade 1": 400, "Upgrade 2": 1500, "Upgrade 3": 7000, "Upgrade 4": 17500 },
+            "Ranger": { "Place": 4500, "Upgrade 1": 1500, "Upgrade 2": 4500, "Upgrade 3": 13500, "Upgrade 4": 30000 },
+            "Pursuit": { "Place": 3000, "Upgrade 1": 1200, "Upgrade 2": 1850, "Upgrade 3": 5000 },
+            "Gatling Gun": { "Place": 5250, "Upgrade 1": 3000, "Upgrade 2": 7500, "Upgrade 3": 15000, "Upgrade 4": 32500, "Upgrade 5": 50000, "Upgrade 6": 100000 },
+            "Turret": { "Place": 5000, "Upgrade 1": 1250, "Upgrade 2": 7250, "Upgrade 3": 15000, "Upgrade 4": 30000, "Upgrade 5": 52500 },
+            "Mortar": { "Place": 900, "Upgrade 1": 325, "Upgrade 2": 1400, "Upgrade 3": 3250, "Upgrade 4": 12000, "Upgrade 5": 25000 },
+            "Mercenary Base": { "Place": 2000, "Upgrade 1": 1000, "Upgrade 2": 2000, "Upgrade 3": 7000, "Upgrade 4": 10000, "Upgrade 5": 15000, "Upgrade 6": 35000 },
+            "Brawler": { "Place": 600, "Upgrade 1": 300, "Upgrade 2": 850, "Upgrade 3": 2000, "Upgrade 4": 5000, "Upgrade 5": 12500 },
+            "Necromancer": { "Place": 1650, "Upgrade 1": 1150, "Upgrade 2": 3950, "Upgrade 3": 11320, "Upgrade 4": 44000 },
+            "Accelerator": { "Place": 4500, "Upgrade 1": 1000, "Upgrade 2": 2500, "Upgrade 3": 4750, "Upgrade 4": 11250, "Upgrade 5": 36000 },
+            "Engineer": { "Place": 600, "Upgrade 1": 350, "Upgrade 2": 550, "Upgrade 3": 2250, "Upgrade 4": 4750, "Upgrade 5": 13500, "Upgrade 6": 35000 },
+            "Hacker": { "Place": 1400, "Upgrade 1": 600, "Upgrade 2": 1250, "Upgrade 3": 7500, "Upgrade 4": 22000 }
+        };
+
+        // Stores the tower name mapped to its placement index (1-based)
+        let towerIndexMap = {}; 
+        
+        /**
+         * Calculates the Hardcore Cost (1.5x rounded up to the nearest integer).
+         * @param {number} baseCost - The normal cost.
+         * @returns {number} The hardcore cost.
+         */
+        const getHardcoreCost = (baseCost) => Math.ceil(baseCost * 1.5); 
+
+        /**
+         * Looks up the cost based on tower name and type (Place or Upgrade X).
+         * @param {string} towerName - Name of the tower.
+         * @param {string} costType - "Place" or "Upgrade X" (where X is the level).
+         * @param {boolean} isHardcore - Apply 1.5x multiplier.
+         * @returns {number|null} The final cost or null if not found.
+         */
+        function lookupCost(towerName, costType, isHardcore) {
+            const towerData = TOWER_COSTS[towerName];
+            if (!towerData) return null;
+
+            const baseCost = towerData[costType];
+            if (baseCost === undefined) return null;
+
+            return isHardcore ? getHardcoreCost(baseCost) : baseCost;
+        }
+        
+        // Regex to capture placeTower command, allowing "cost" or cost, and crucially capturing the comma/space before and after the cost placeholder
+        const getPlaceRegex = () => {
+             // Group 1: Prefix up to the tower name's closing quote (e.g., placeTower(Vec3, "Scout")
+             // Group 2: Tower Name (e.g., Scout)
+             // Group 3: The separator after tower name and before cost (e.g., , )
+             // Group 4: The cost placeholder, allowing "cost" or cost (quoted or unquoted)
+             // Group 5: The closing parenthesis and anything after (e.g., ) -- Comment)
+             
+             // Capture the entire cost argument, including surrounding quotes if present:
+             // ([\s\S]*?,\s*['"]) - Start of function call up to tower name's closing quote
+             // ([^'"]+?) - Tower name
+             // (['"]\s*,\s*) - Separator after tower name, including its closing quote, and before the cost
+             // (['"]?([cC][oO][sS][t])['"]?) - Cost placeholder (quoted or unquoted)
+             // (\s*\)) - Closing parenthesis/suffix
+             
+             // The crucial change is that we want to capture the exact structure of the cost argument
+             return /(\s*place\s*Tower\s*\([\s\S]*?,\s*['"])([^'"]+?)(['"]\s*,\s*)(['"]?([cC][oO][sS][t])['"]?)(\s*\))/i;
+        };
+
+        // Regex to capture upgradeTower command, allowing "cost" or cost
+        const getUpgradeRegex = () => {
+             // Group 1: Prefix up to the index (e.g., upgradeTower()
+             // Group 2: Tower Index (e.g., 1)
+             // Group 3: The separator after index and before cost (e.g., , )
+             // Group 4: The cost placeholder, allowing "cost" or cost (quoted or unquoted)
+             // Group 5: The closing parenthesis and anything after (e.g., ) -- Comment)
+            return /(\s*upgrade\s*Tower\s*\([\s\S]*?)(\d+)(\s*,\s*)(['"]?([cC][oO][sS][t])['"]?)(\s*\))/i;
+        };
+
+
+        /**
+         * Pre-scans the input code to map the indexes of placeTower commands to the tower name.
+         * This creates the master list of towers placed.
+         * @param {string} inputCode - The code string to process.
+         */
+        function preProcessPlaceCommands(inputCode) {
+            towerIndexMap = {};
+            let index = 1;
+            
+            // NOTE: We use a simplified regex for pre-processing just to get the tower name
+            const preProcessRegex = /(\s*place\s*Tower\s*\([\s\S]*?,\s*['"])([^'"]+?)(['"]\s*,\s*)/i;
+            const lines = inputCode.split('\n');
+
+            lines.forEach(line => {
+                // We only care about lines containing placeTower commands for indexing
+                if (line.toLowerCase().includes('placetower')) {
+                    
+                    const placeMatch = line.match(preProcessRegex);
+                    
+                    if (placeMatch) {
+                        // The tower name is captured in Group 2
+                        const towerName = placeMatch[2].trim();
+                        if (towerName) {
+                            towerIndexMap[index] = towerName;
+                            index++;
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * The main function to process the input code string.
+         * Handles both placeTower and the new index-based upgradeTower commands (based on call count).
+         */
+        function processCode(inputCode, isHardcore) {
+            
+            if (inputCode.trim() === '') {
+                 return "❌ ERROR: Invalid format. Input cannot be empty.";
+            }
+
+            // Step 1: Pre-process the code to map indexes to tower names
+            preProcessPlaceCommands(inputCode);
+            
+            let outputCode = '';
+            let matchesFound = 0;
+            
+            // Map to track the current upgrade level for each Tower Index 
+            const upgradeCounterMap = {}; 
+            Object.keys(towerIndexMap).forEach(index => {
+                upgradeCounterMap[index] = 0;
+            });
+
+            // Regexes defined once
+            const placeRegex = getPlaceRegex();
+            const upgradeRegex = getUpgradeRegex();
+
+            const lines = inputCode.split('\n');
+
+            lines.forEach(line => {
+                let processedLine = line;
+                let lineReplaced = false;
+
+                // --- 1. PROCESS placeTower (Ensures cost is always unquoted) ---
+                if (line.toLowerCase().includes('placetower')) {
+                    processedLine = line.replace(placeRegex, (match, prefix, towerName, separator, costArgument, costPlaceholder, endSuffix) => {
+                        matchesFound++;
+                        lineReplaced = true;
+                        const cleanTowerName = towerName.trim(); 
+                        const finalCost = lookupCost(cleanTowerName, "Place", isHardcore);
+                        
+                        // We replace Group 4 (costArgument) with the numeric cost.
+                        if (finalCost !== null) {
+                            // Replacement: Rebuild the line with the numeric cost (unquoted)
+                            return `${prefix}${cleanTowerName}${separator}${finalCost}${endSuffix}`;
+                        } else {
+                            return match + ` --[[ ERROR: Place Cost not found for "${cleanTowerName}" ]]`;
+                        }
+                    });
+                } 
+                
+                // --- 2. PROCESS upgradeTower (Ensures cost is always unquoted) ---
+                else if (line.toLowerCase().includes('upgradetower') && !lineReplaced) {
+                    processedLine = line.replace(upgradeRegex, (match, prefix, indexValue, separator, costArgument, costPlaceholder, endSuffix) => {
+                        matchesFound++;
+                        lineReplaced = true;
+                        
+                        const towerIndex = parseInt(indexValue, 10);
+                        
+                        // Increment the level counter for this specific tower index
+                        upgradeCounterMap[towerIndex] = (upgradeCounterMap[towerIndex] || 0) + 1;
+                        const currentLevel = upgradeCounterMap[towerIndex];
+                        
+                        const cleanTowerName = towerIndexMap[towerIndex];
+                        const costType = `Upgrade ${currentLevel}`;
+
+                        if (!cleanTowerName) {
+                            return match + ` --[[ ERROR: Tower Index ${towerIndex} not found in placeTower list. ]]`;
+                        }
+
+                        // Lookup cost for "Upgrade X"
+                        const finalCost = lookupCost(cleanTowerName, costType, isHardcore);
+
+                        if (finalCost !== null) {
+                            // Replacement: Rebuild the line with the numeric cost (unquoted)
+                            const replacedMatch = `${prefix}${towerIndex}${separator}${finalCost}${endSuffix}`;
+                            // Add an informative comment
+                            return `${replacedMatch} --[[ ${cleanTowerName} Lvl ${currentLevel} (${costType}) ]]`;
+                        } else {
+                            // Upgrade cost not found
+                            return match + ` --[[ ERROR: Upgrade ${currentLevel} Cost not found for "${cleanTowerName}" (Index ${towerIndex}). Max Level Reached? ]]`;
+                        }
+                    });
+                }
+
+                outputCode += processedLine + '\n';
+            }); // End of lines.forEach
+
+            if (matchesFound === 0) {
+                // If neither regex found any matching pattern
+                return "❌ ERROR: Invalid format. Found no 'placeTower(..., cost)' or 'upgradeTower(INDEX, cost)' commands using the 'cost' keyword (quoted or unquoted). Please check the syntax.";
+            }
+            
+            // Clean up trailing newline added by loop
+            return outputCode.trimEnd(); 
+        }
+
+        // --- Modal Functions ---
+        const upgradeModal = document.getElementById('upgradeModal');
+        const sourceModal = document.getElementById('sourceModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalTableBody = document.getElementById('modalTableBody');
+
+        /**
+         * Opens the Tower Upgrade Cost modal.
+         * @param {string} towerName 
+         */
+        function openModal(towerName) {
+            const data = TOWER_COSTS[towerName];
+            if (!data) return;
+
+            modalTitle.textContent = `Tower Upgrade Costs: ${towerName}`;
+            let tableHtml = '';
+            let isEven = false;
+
+            // Sort keys to ensure Upgrade 1, 2, 3... are in order
+            const upgradeKeys = Object.keys(data)
+                .filter(key => key.startsWith('Upgrade'))
+                .sort((a, b) => {
+                    const levelA = parseInt(a.split(' ')[1]);
+                    const levelB = parseInt(b.split(' ')[1]);
+                    return levelA - levelB;
+                });
+
+            if (upgradeKeys.length === 0) {
+                modalTableBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-gray-400">No detailed upgrade data available for this Tower.</td></tr>`;
+            } else {
+                upgradeKeys.forEach(key => {
+                    const baseCost = data[key];
+                    const hcCost = getHardcoreCost(baseCost);
+                    const level = key.split(' ')[1]; // Extract level number
+
+                    const rowClass = isEven ? 'bg-gray-800' : 'bg-gray-700/50';
+                    tableHtml += `<tr class="${rowClass} border-b border-gray-700">`;
+                    tableHtml += `<td class="p-2 font-medium">Level ${level}</td>`;
+                    tableHtml += `<td class="p-2 text-right text-green-400 font-semibold">$${baseCost.toLocaleString('en-US')}</td>`;
+                    tableHtml += `<td class="p-2 text-right text-red-400 font-semibold">$${hcCost.toLocaleString('en-US')}</td>`;
+                    tableHtml += `</tr>`;
+                    isEven = !isEven;
+                });
+                modalTableBody.innerHTML = tableHtml;
+            }
+
+            upgradeModal.style.display = "block";
+        }
+        
+        /**
+         * Opens the Source Information modal.
+         */
+        function openSourceModal() {
+            sourceModal.style.display = "block";
+        }
+
+        /**
+         * Closes a specified modal.
+         * @param {string} modalId - The ID of the modal to close.
+         */
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = "none";
+        }
+        
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            if (event.target == upgradeModal) {
+                closeModal('upgradeModal');
+            }
+            if (event.target == sourceModal) {
+                closeModal('sourceModal');
+            }
+        }
+
+
+        // --- UI Logic ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const processButton = document.getElementById('processButton');
+            const inputCodeElement = document.getElementById('inputCode');
+            const outputTextElement = document.getElementById('outputText');
+            const costTableBody = document.getElementById('costTableBody');
+            const hardcoreModeCheckbox = document.getElementById('hardcoreMode');
+
+            // Initialize the Place cost table
+            function initCostTable() {
+                let tableHtml = '';
+                let isEven = false;
+                for (const tower in TOWER_COSTS) {
+                    const data = TOWER_COSTS[tower];
+                    const placeCost = data['Place'] || 0;
+                    const hcPlace = getHardcoreCost(placeCost);
+                    
+                    const rowClass = isEven ? 'bg-gray-800' : 'bg-gray-700/50';
+                    
+                    // Add onclick event to row to open modal
+                    tableHtml += `<tr class="${rowClass} hover:bg-gray-700 border-b border-gray-700 cursor-pointer transition duration-150 ease-in-out" onclick="openModal('${tower}')">`;
+                    tableHtml += `<td class="p-2 font-medium text-blue-300 hover:underline">${tower}</td>`;
+                    
+                    // Place Cost (Normal / Hardcore)
+                    tableHtml += `<td class="p-2 text-right">
+                        <span class="text-green-400">$${placeCost.toLocaleString('en-US')}</span>
+                    </td>`;
+                    tableHtml += `<td class="p-2 text-right">
+                        <span class="text-red-400 font-semibold">$${hcPlace.toLocaleString('en-US')}</span>
+                    </td>`;
+                    
+                    tableHtml += `</tr>`;
+                    isEven = !isEven;
+                }
+                costTableBody.innerHTML = tableHtml;
+            }
+
+            // Set input box to be empty
+            inputCodeElement.value = '';
+
+            // Handle button click
+            processButton.addEventListener('click', () => {
+                const inputCode = inputCodeElement.value;
+                const isHardcore = hardcoreModeCheckbox.checked;
+                
+                const result = processCode(inputCode, isHardcore);
+                
+                // Display result
+                outputTextElement.textContent = result;
+            });
+
+            initCostTable();
+        });
+    </script>
+</body>
+</html>
+
