@@ -13,7 +13,7 @@
             min-height: 10vh;
             
             /* --- CUSTOM BACKGROUND IMAGE --- */
-            background-image: url('https://i.postimg.cc/0Q0DmQmj/lunarisx-logo-description-background-a-deep-space-bla.jpg'); 
+            background-image: url('https://i.post.cc/0QyD7v2G/black-dark-space-texture.jpg'); 
             background-size: cover;
             background-attachment: fixed; 
             background-position: center;
@@ -349,4 +349,448 @@ placeTower(Vector3.new(-1.06437, 1.03687, -3.10217), "Turret", cost)
 upgradeTower(23, cost)
 placeTower(Vector3.new(-5.22454, 1.03687, -2.68031), "Turret", cost)
 upgradeTower(24, cost)
-placeTower(Vector3.new(-9.
+placeTower(Vector3.new(-9.31335, 1.03687, -2.52221), "Turret", cost)
+upgradeTower(25, cost)`;
+        // --- END UPDATED EXAMPLE CODE ---
+
+
+        /**
+         * Calculates the Hardcore Cost (1.5x rounded up to the nearest integer).
+         */
+        const getHardcoreCost = (baseCost) => Math.ceil(baseCost * 1.5); 
+
+        /**
+         * Looks up the cost based on tower name and type (Place or Upgrade X).
+         */
+        function lookupCost(towerName, costType, isHardcore) {
+            const towerData = TOWER_COSTS[towerName];
+            if (!towerData) return null;
+
+            const baseCost = towerData[costType];
+            if (baseCost === undefined) return null;
+
+            return isHardcore ? getHardcoreCost(baseCost) : baseCost;
+        }
+        
+        // Regex for placeTower
+        const getPlaceRegex = () => {
+             // G1: Prefix up to the tower name's closing quote
+             // G2: Tower Name
+             // G3: The separator after tower name and before cost
+             // G4: The cost placeholder, allowing "cost" or cost
+             // G5: The closing parenthesis and anything after
+             return /(\s*place\s*Tower\s*\([\s\S]*?,\s*['"])([^'"]+?)(['"]\s*,\s*)(['"]?([cC][oO][sS][t]|\d+)'?)(['"]?)(\s*\))/i;
+        };
+
+        /**
+         * Regex for upgradeTower. Captures both 2-argument (new: upgradeTower(1)) and 3-argument (legacy: upgradeTower(1, cost)) formats.
+         * (G1: Prefix up to index) (G2: Index) (G3: Optional ", cost_placeholder") (G4: inner cost keyword/number) (G5: Suffix/End)
+         */
+        const getUpgradeRegex = () => {
+             // G1: Prefix up to index
+             // G2: Index
+             // G3: Optional separator and cost placeholder (covers , cost or , "cost" or , 1234). Optionality is handled by ? at the end of the group.
+             // G4: inner cost keyword or number
+             // G5: Suffix/End
+            return /(\s*upgrade\s*Tower\s*\([\s\S]*?)(\d+)(\s*,\s*['"]?([cC][oO][sS][t]|\d+)'?)?(\s*\))/i;
+        };
+
+
+        /**
+         * Pre-scans the input code to map the indexes of placeTower commands to the tower name.
+         */
+        function preProcessPlaceCommands(inputCode) {
+            towerIndexMap = {};
+            let index = 1;
+            
+            // Regex to capture the tower name
+            const preProcessRegex = /(\s*place\s*Tower\s*\([\s\S]*?,\s*['"])([^'"]+?)(['"]\s*,\s*)/i;
+            const lines = inputCode.split('\n');
+
+            lines.forEach(line => {
+                // Only count lines that contain the placeTower function call and are not commented out
+                if (line.toLowerCase().includes('placetower(') && !line.trim().startsWith('--') && !line.trim().startsWith('//')) {
+                    
+                    const placeMatch = line.match(preProcessRegex);
+                    
+                    if (placeMatch) {
+                        const towerName = placeMatch[2].trim();
+                        if (towerName) {
+                            towerIndexMap[index] = towerName;
+                            index++;
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * The main function to process the input code string.
+         */
+        function processCode(inputCode, isHardcore) {
+            
+            if (inputCode.trim() === '') {
+                 return "❌ ERROR: Invalid format. Input cannot be empty.";
+            }
+
+            // Step 1: Pre-process the code to map indexes to tower names
+            preProcessPlaceCommands(inputCode);
+            
+            let outputCode = '';
+            let matchesFound = 0;
+            let totalCost = 0; 
+            
+            // Map to track the current upgrade level for each Tower Index 
+            const upgradeCounterMap = {}; 
+            Object.keys(towerIndexMap).forEach(index => {
+                upgradeCounterMap[index] = 0;
+            });
+
+            const placeRegex = getPlaceRegex();
+            const upgradeRegex = getUpgradeRegex();
+
+            const lines = inputCode.split('\n');
+
+            lines.forEach(line => {
+                // Skip comments (allowing both Lua-style -- and JS-style //)
+                if (line.trim().startsWith('--') || line.trim().startsWith('//')) {
+                    outputCode += line + '\n';
+                    return;
+                }
+                
+                let processedLine = line;
+
+                // --- 1. PROCESS placeTower ---
+                if (line.toLowerCase().includes('placetower')) {
+                    const placeMatch = line.match(placeRegex);
+                    
+                    if (placeMatch) {
+                        const towerName = placeMatch[2].trim(); 
+                        const finalCost = lookupCost(towerName, "Place", isHardcore);
+                        
+                        processedLine = line.replace(placeRegex, (match, prefixToTowerName, towerName, separatorToCost, costPlaceholderGroup, costKeywordOrNumber, trailingQuote, endSuffix) => {
+                             if (finalCost !== null) {
+                                matchesFound++;
+                                totalCost += finalCost; // Add cost to total
+                                // Replace cost placeholder (G4) with numeric cost (unquoted)
+                                return `${prefixToTowerName}${towerName}${separatorToCost}${finalCost}${endSuffix}`;
+                            } else {
+                                console.warn(`[Place] Tower name not found or cost missing: ${towerName}`);
+                                return match; 
+                            }
+                        });
+                    }
+                }
+
+                // --- 2. PROCESS upgradeTower (Handling both 2-arg and 3-arg input) ---
+                else if (line.toLowerCase().includes('upgradetower')) {
+                    const upgradeMatch = line.match(upgradeRegex);
+
+                    if (upgradeMatch) {
+                        
+                        const towerIndex = parseInt(upgradeMatch[2], 10);
+                        const towerName = towerIndexMap[towerIndex]; 
+                        
+                        if (towerName) {
+                            // Increment counter for this index
+                            upgradeCounterMap[towerIndex] = (upgradeCounterMap[towerIndex] || 0) + 1;
+                            const currentLevel = upgradeCounterMap[towerIndex];
+                            const costType = `Upgrade ${currentLevel}`;
+                            const finalCost = lookupCost(towerName, costType, isHardcore);
+                            
+                            if (finalCost !== null) {
+                                matchesFound++;
+                                totalCost += finalCost; // Add cost to total
+                                
+                                processedLine = line.replace(upgradeRegex, (match, prefix, index, optionalCostGroup, costKeywordOrNumber, endSuffix) => {
+                                    
+                                    // If cost placeholder was present (Legacy format: upgradeTower(1, cost) or upgradeTower(1, 1234))
+                                    if (optionalCostGroup) {
+                                        // Replace the optionalCostGroup with ", finalCost"
+                                        return `${prefix}${index}, ${finalCost}${endSuffix}`;
+                                    } else {
+                                        // If cost placeholder was NOT present (New format: upgradeTower(1))
+                                        // Insert ", finalCost" before the end suffix
+                                        return `${prefix}${index}, ${finalCost}${endSuffix}`;
+                                    }
+                                });
+
+                            } else {
+                                // Max level reached or cost not defined. Revert counter and warn.
+                                console.warn(`[Upgrade] Max level reached or cost not defined for ${towerName} (Index ${towerIndex}, Level ${currentLevel}). Skipping.`);
+                                upgradeCounterMap[towerIndex]--; 
+                            }
+                        } else {
+                            console.warn(`[Upgrade] Index ${towerIndex} not found in placement map.`);
+                        }
+                    }
+                }
+
+                outputCode += processedLine + '\n';
+            }); 
+
+            // Final processing/cleanup
+            outputCode = outputCode.trim();
+            const costModeText = isHardcore ? "Hardcore" : "Normal";
+            
+            // Add total cost to the top of the output
+            outputCode = `// --- TOTAL COST (${costModeText}): ${totalCost.toLocaleString()} ---\n` + outputCode;
+
+
+            if (matchesFound === 0) {
+                 return "⚠️ WARNING: No valid 'placeTower' or 'upgradeTower' commands found. Please check format.";
+            }
+            
+            return outputCode;
+        }
+        
+        /**
+         * Appends multiple upgradeTower(index) calls to the input textarea.
+         */
+        function duplicateUpgradeCalls() {
+            const index = parseInt(indexInput.value, 10);
+            const dup = parseInt(dupInput.value, 10);
+
+            duplicateMessage.classList.add('hidden'); // Clear previous errors
+
+            if (isNaN(index) || index < 1 || isNaN(dup) || dup < 1) {
+                duplicateMessage.classList.remove('hidden');
+                return;
+            }
+
+            let newCalls = '';
+            for (let i = 0; i < dup; i++) {
+                // Each call always ends with a newline
+                newCalls += `upgradeTower(${index})\n`; 
+            }
+
+            // Get current content
+            let existingValue = inputCodeTextarea.value;
+
+            // Ensure the new block starts on a clean line
+            if (existingValue.length > 0 && !existingValue.endsWith('\n')) {
+                existingValue += '\n';
+            } else if (existingValue.length === 0) {
+                existingValue = ''; // Start from blank if empty
+            }
+            
+            // Append the new calls
+            inputCodeTextarea.value = existingValue + newCalls;
+            
+            // Clear inputs and set focus for next use
+            indexInput.value = '1';
+            dupInput.value = '1';
+            indexInput.focus();
+        }
+
+
+        // --- CLIPBOARD FUNCTIONALITY ---
+
+        /**
+         * Fallback mechanism using document.execCommand('copy')
+         */
+        function fallbackCopy(text, button, originalText) {
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = text;
+            tempTextArea.style.position = 'fixed';
+            tempTextArea.style.left = '-9999px';
+            tempTextArea.style.top = '0';
+
+            document.body.appendChild(tempTextArea);
+            tempTextArea.focus();
+            tempTextArea.select();
+
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    button.textContent = 'Copied! ✅';
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                    }, 1500);
+                } else {
+                    button.textContent = 'Failed ❌';
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                    }, 2000);
+                }
+            } catch (err) {
+                button.textContent = 'Error ❌';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 2000);
+            }
+
+            document.body.removeChild(tempTextArea);
+        }
+        
+        /**
+         * Copies the content of the outputText pre element to the clipboard.
+         */
+        function copyOutput() {
+            const textToCopy = outputTextElement.textContent;
+            const copyButton = document.getElementById('copyButton');
+            const originalText = 'Copy All';
+
+            if (textToCopy.includes("Paste your code") || textToCopy.includes("No valid")) {
+                 copyButton.textContent = 'No code to copy!';
+                 setTimeout(() => { copyButton.textContent = originalText; }, 2000);
+                 return;
+            }
+
+            // 1. Try modern clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy)
+                    .then(() => {
+                        copyButton.textContent = 'Copied! ✅';
+                        setTimeout(() => {
+                            copyButton.textContent = originalText;
+                        }, 1500);
+                    })
+                    .catch(err => {
+                        // 2. Fallback
+                        fallbackCopy(textToCopy, copyButton, originalText);
+                    });
+            } else {
+                // 2. Fallback for old browsers/iframe
+                fallbackCopy(textToCopy, copyButton, originalText);
+            }
+        }
+
+        // --- UI & EVENT HANDLERS ---
+        
+        /**
+         * Opens the Pizza Party Strat Example modal.
+         */
+        function openExampleModal() {
+            document.getElementById('exampleCodeText').textContent = EXAMPLE_CODE;
+            document.getElementById('exampleModal').style.display = 'block';
+        }
+
+        /**
+         * Loads the example code into the input textarea.
+         */
+        function loadExample() {
+            inputCodeTextarea.value = EXAMPLE_CODE;
+            // Automatically process the code after loading the example
+            processButton.click();
+        }
+
+        /**
+         * Fills the main cost table with placement costs.
+         */
+        function populateCostTable() {
+            costTableBody.innerHTML = '';
+            const isHardcore = hardcoreModeCheckbox.checked;
+
+            const sortedTowerNames = Object.keys(TOWER_COSTS).sort();
+
+            sortedTowerNames.forEach(name => {
+                const normalCost = TOWER_COSTS[name]["Place"];
+                const hardcoreCost = getHardcoreCost(normalCost);
+
+                const row = document.createElement('tr');
+                row.className = 'border-t border-gray-700 hover:bg-gray-700 cursor-pointer';
+                row.setAttribute('onclick', `showUpgradeCosts('${name}', ${isHardcore})`);
+
+                row.innerHTML = `
+                    <td class="p-2 text-left font-semibold text-green-300">${name}</td>
+                    <td class="p-2 text-right">${normalCost}</td>
+                    <td class="p-2 text-right text-red-400">${hardcoreCost}</td>
+                `;
+                costTableBody.appendChild(row);
+            });
+        }
+
+        /**
+         * Shows the modal with detailed upgrade costs for a selected tower.
+         */
+        function showUpgradeCosts(towerName, isHardcore) {
+            modalTitle.textContent = `${towerName} - Upgrade Costs (${isHardcore ? 'Hardcore' : 'Normal'})`;
+            modalTableBody.innerHTML = '';
+            const towerData = TOWER_COSTS[towerName];
+            
+            if (!towerData) return;
+
+            const upgradeLevels = Object.keys(towerData)
+                .filter(key => key.startsWith("Upgrade "))
+                .sort((a, b) => parseInt(a.split(' ')[1]) - parseInt(b.split(' ')[1]));
+
+            upgradeLevels.forEach((costType, index) => {
+                const normalCost = towerData[costType];
+                const hardcoreCost = getHardcoreCost(normalCost);
+                const level = index + 1;
+
+                const row = document.createElement('tr');
+                row.className = 'border-t border-gray-700';
+                row.innerHTML = `
+                    <td class="p-2 text-left font-semibold">Level ${level}</td>
+                    <td class="p-2 text-right">${normalCost}</td>
+                    <td class="p-2 text-right text-red-400">${isHardcore ? hardcoreCost : '-'}</td>
+                `;
+                modalTableBody.appendChild(row);
+            });
+
+            document.getElementById('upgradeModal').style.display = 'block';
+        }
+
+        /**
+         * General function to close any modal.
+         */
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        /**
+         * Opens the Source Info modal.
+         */
+        function openSourceModal() {
+            document.getElementById('sourceModal').style.display = 'block';
+        }
+
+
+        window.onload = function() {
+            // Get DOM references
+            outputTextElement = document.getElementById('outputText');
+            processButton = document.getElementById('processButton');
+            hardcoreModeCheckbox = document.getElementById('hardcoreMode');
+            inputCodeTextarea = document.getElementById('inputCode');
+            costTableBody = document.getElementById('costTableBody');
+            modalTableBody = document.getElementById('modalTableBody');
+            modalTitle = document.getElementById('modalTitle');
+            
+            // References for Duplication Tool
+            indexInput = document.getElementById('indexInput');
+            dupInput = document.getElementById('dupInput');
+            const duplicateButton = document.getElementById('duplicateButton');
+            duplicateMessage = document.getElementById('duplicateMessage');
+
+            // Set up Event Listeners
+            processButton.addEventListener('click', () => {
+                const inputCode = inputCodeTextarea.value;
+                const isHardcore = hardcoreModeCheckbox.checked;
+                const result = processCode(inputCode, isHardcore);
+                outputTextElement.textContent = result;
+                
+                populateCostTable(); 
+            });
+            
+            duplicateButton.addEventListener('click', duplicateUpgradeCalls);
+
+
+            hardcoreModeCheckbox.addEventListener('change', populateCostTable);
+            hardcoreModeCheckbox.addEventListener('change', () => {
+                // When Hardcore mode changes, re-process the code to update the total cost
+                if(inputCodeTextarea.value.trim() !== "") {
+                    processButton.click();
+                }
+            });
+
+
+            // Initial population of the cost table
+            populateCostTable();
+        };
+
+    </script>
+</body>
+</html>
+
