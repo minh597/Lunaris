@@ -383,4 +383,349 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
 
             lines.forEach(line => {
                 // Only process lines that contain the place function call and are not commented out
-                if (line.toLowerCase().includes('plac
+                if (line.toLowerCase().includes('place(') && !line.trim().startsWith('--') && !line.trim().startsWith('//')) {
+                    
+                    const placeMatch = line.match(placeRegex);
+                    
+                    if (placeMatch) {
+                        const xStr = placeMatch[2];
+                        const zStr = placeMatch[4];
+                        const towerName = placeMatch[5].trim();
+                        
+                        const key = getCoordKey(xStr, zStr);
+
+                        if (towerName && !towerCoordsMap[key]) {
+                            // Map the unique X,Z coordinates to tower data, initialize upgrade level
+                            towerCoordsMap[key] = {
+                                towerName: towerName,
+                                upgradeLevel: 0
+                            };
+                        }
+                    }
+                }
+            });
+            // console.log("Tower Coords Map:", towerCoordsMap);
+        }
+
+        /**
+         * The main function to process the input code string.
+         */
+        function processCode(inputCode, isHardcore) {
+            
+            if (inputCode.trim() === '') {
+                 return "❌ ERROR: Invalid format. Input cannot be empty.";
+            }
+
+            // Step 1: Pre-process the code to map unique X,Z coordinates to tower names
+            preProcessPlaceCommands(inputCode);
+            
+            let outputCode = '';
+            let matchesFound = 0;
+            let totalCost = 0; 
+            
+            // Create a temporary, writable copy of the map for upgrade tracking during processing
+            const activeTowerTracker = JSON.parse(JSON.stringify(towerCoordsMap));
+
+            const placeRegex = getPlaceRegex();
+            const upgradeRegex = getUpgradeRegex();
+
+            const lines = inputCode.split('\n');
+
+            lines.forEach(line => {
+                // Skip comments
+                if (line.trim().startsWith('--') || line.trim().startsWith('//')) {
+                    outputCode += line + '\n';
+                    return;
+                }
+                
+                let processedLine = line;
+
+                // --- 1. PROCESS place(X, Y, Z, "TowerName", cost) ---
+                if (line.toLowerCase().includes('place(')) {
+                    const placeMatch = line.match(placeRegex);
+                    
+                    if (placeMatch) {
+                        const xStr = placeMatch[2];
+                        const zStr = placeMatch[4];
+                        const towerName = placeMatch[5].trim(); 
+                        
+                        // Use the key derived from the X, Z coords
+                        const key = getCoordKey(xStr, zStr);
+                        const finalCost = lookupCost(towerName, "Place", isHardcore);
+                        
+                        processedLine = line.replace(placeRegex, (match, prefix, x, y, z, name, costPlaceholder, endSuffix) => {
+                             if (finalCost !== null) {
+                                matchesFound++;
+                                totalCost += finalCost; 
+                                // Return the full line with the cost placeholder (G6) replaced by the numeric cost
+                                return `${prefix}${x}, ${y}, ${z}, "${name}", ${finalCost}${endSuffix}`;
+                            } else {
+                                console.warn(`[Place] Tower name not found or cost missing: ${towerName}`);
+                                return match; 
+                            }
+                        });
+                    }
+                }
+
+                // --- 2. PROCESS upgrade(X, Y, Z, cost) ---
+                else if (line.toLowerCase().includes('upgrade(')) {
+                    const upgradeMatch = line.match(upgradeRegex);
+
+                    if (upgradeMatch) {
+                        
+                        const xStr = upgradeMatch[2];
+                        const zStr = upgradeMatch[4];
+                        const costPlaceholder = upgradeMatch[5];
+                        
+                        // Use the key derived from the X, Z coords for lookup
+                        const key = getCoordKey(xStr, zStr);
+                        const towerInfo = activeTowerTracker[key];
+                        
+                        if (towerInfo) {
+                            // Increment counter for this tower
+                            towerInfo.upgradeLevel++;
+                            const currentLevel = towerInfo.upgradeLevel;
+                            
+                            const towerName = towerInfo.towerName;
+                            const costType = `Upgrade ${currentLevel}`;
+                            const finalCost = lookupCost(towerName, costType, isHardcore);
+                            
+                            if (finalCost !== null) {
+                                matchesFound++;
+                                totalCost += finalCost; 
+                                
+                                processedLine = line.replace(upgradeRegex, (match, prefix, x, y, z, costPlaceholder, endSuffix) => {
+                                    // Replace the cost placeholder (G5) with the numeric cost
+                                    return `${prefix}${x}, ${y}, ${z}, ${finalCost}${endSuffix}`;
+                                });
+
+                            } else {
+                                // Max level reached or cost not defined. Revert counter and warn.
+                                console.warn(`[Upgrade] Max level reached or cost not defined for ${towerName} at X:${roundCoord(xStr)}, Z:${roundCoord(zStr)} (Level ${currentLevel}). Skipping.`);
+                                towerInfo.upgradeLevel--; 
+                            }
+                        } else {
+                            console.warn(`[Upgrade] Tower not found at X:${roundCoord(xStr)}, Z:${roundCoord(zStr)} in placement map.`);
+                        }
+                    }
+                }
+
+                outputCode += processedLine + '\n';
+            }); 
+
+            // Final processing/cleanup
+            outputCode = outputCode.trim();
+            const costModeText = isHardcore ? "Hardcore" : "Normal";
+            
+            // Add total cost to the top of the output
+            outputCode = `// --- TOTAL COST (${costModeText}): ${totalCost.toLocaleString()} ---\n` + outputCode;
+
+
+            if (matchesFound === 0) {
+                 return "⚠️ WARNING: No valid 'place' or 'upgrade' commands found. Please check format.";
+            }
+            
+            return outputCode;
+        }
+        
+        // --- CLIPBOARD FUNCTIONALITY (Same as before) ---
+
+        /**
+         * Fallback mechanism using document.execCommand('copy')
+         */
+        function fallbackCopy(text, button, originalText) {
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = text;
+            tempTextArea.style.position = 'fixed';
+            tempTextArea.style.left = '-9999px';
+            tempTextArea.style.top = '0';
+
+            document.body.appendChild(tempTextArea);
+            tempTextArea.focus();
+            tempTextArea.select();
+
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    button.textContent = 'Copied! ✅';
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                    }, 1500);
+                } else {
+                    button.textContent = 'Failed ❌';
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                    }, 2000);
+                }
+            } catch (err) {
+                button.textContent = 'Error ❌';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 2000);
+            }
+
+            document.body.removeChild(tempTextArea);
+        }
+        
+        /**
+         * Copies the content of the outputText pre element to the clipboard.
+         */
+        function copyOutput() {
+            const textToCopy = outputTextElement.textContent;
+            const copyButton = document.getElementById('copyButton');
+            const originalText = 'Copy All';
+
+            if (textToCopy.includes("Paste your code") || textToCopy.includes("No valid")) {
+                 copyButton.textContent = 'No code to copy!';
+                 setTimeout(() => { copyButton.textContent = originalText; }, 2000);
+                 return;
+            }
+
+            // 1. Try modern clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy)
+                    .then(() => {
+                        copyButton.textContent = 'Copied! ✅';
+                        setTimeout(() => {
+                            copyButton.textContent = originalText;
+                        }, 1500);
+                    })
+                    .catch(err => {
+                        // 2. Fallback
+                        fallbackCopy(textToCopy, copyButton, originalText);
+                    });
+            } else {
+                // 2. Fallback for old browsers/iframe
+                fallbackCopy(textToCopy, copyButton, originalText);
+            }
+        }
+
+        // --- UI & EVENT HANDLERS (Same as before) ---
+        
+        /**
+         * Opens the Pizza Party Strat Example modal.
+         */
+        function openExampleModal() {
+            document.getElementById('exampleCodeText').textContent = EXAMPLE_CODE;
+            document.getElementById('exampleModal').style.display = 'block';
+        }
+
+        /**
+         * Loads the example code into the input textarea.
+         */
+        function loadExample() {
+            inputCodeTextarea.value = EXAMPLE_CODE;
+            // Automatically process the code after loading the example
+            processButton.click();
+        }
+
+        /**
+         * Fills the main cost table with placement costs.
+         */
+        function populateCostTable() {
+            costTableBody.innerHTML = '';
+            const isHardcore = hardcoreModeCheckbox.checked;
+
+            const sortedTowerNames = Object.keys(TOWER_COSTS).sort();
+
+            sortedTowerNames.forEach(name => {
+                const normalCost = TOWER_COSTS[name]["Place"];
+                const hardcoreCost = getHardcoreCost(normalCost);
+
+                const row = document.createElement('tr');
+                row.className = 'border-t border-gray-700 hover:bg-gray-700 cursor-pointer';
+                row.setAttribute('onclick', `showUpgradeCosts('${name}', ${isHardcore})`);
+
+                row.innerHTML = `
+                    <td class="p-2 text-left font-semibold text-green-300">${name}</td>
+                    <td class="p-2 text-right">${normalCost.toLocaleString()}</td>
+                    <td class="p-2 text-right text-red-400">${hardcoreCost.toLocaleString()}</td>
+                `;
+                costTableBody.appendChild(row);
+            });
+        }
+
+        /**
+         * Shows the modal with detailed upgrade costs for a selected tower.
+         */
+        function showUpgradeCosts(towerName, isHardcore) {
+            modalTitle.textContent = `${towerName} - Upgrade Costs (${isHardcore ? 'Hardcore' : 'Normal'})`;
+            modalTableBody.innerHTML = '';
+            const towerData = TOWER_COSTS[towerName];
+            
+            if (!towerData) return;
+
+            const upgradeLevels = Object.keys(towerData)
+                .filter(key => key.startsWith("Upgrade "))
+                .sort((a, b) => parseInt(a.split(' ')[1]) - parseInt(b.split(' ')[1]));
+
+            upgradeLevels.forEach((costType, index) => {
+                const normalCost = towerData[costType];
+                const hardcoreCost = getHardcoreCost(normalCost);
+                const level = index + 1;
+
+                const row = document.createElement('tr');
+                row.className = 'border-t border-gray-700';
+                row.innerHTML = `
+                    <td class="p-2 text-left font-semibold">Level ${level}</td>
+                    <td class="p-2 text-right">${normalCost.toLocaleString()}</td>
+                    <td class="p-2 text-right text-red-400">${isHardcore ? hardcoreCost.toLocaleString() : '-'}</td>
+                `;
+                modalTableBody.appendChild(row);
+            });
+
+            document.getElementById('upgradeModal').style.display = 'block';
+        }
+
+        /**
+         * General function to close any modal.
+         */
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        /**
+         * Opens the Source Info modal.
+         */
+        function openSourceModal() {
+            document.getElementById('sourceModal').style.display = 'block';
+        }
+
+
+        window.onload = function() {
+            // Get DOM references
+            outputTextElement = document.getElementById('outputText');
+            processButton = document.getElementById('processButton');
+            hardcoreModeCheckbox = document.getElementById('hardcoreMode');
+            inputCodeTextarea = document.getElementById('inputCode');
+            costTableBody = document.getElementById('costTableBody');
+            modalTableBody = document.getElementById('modalTableBody');
+            modalTitle = document.getElementById('modalTitle');
+            
+            // Set up Event Listeners
+            processButton.addEventListener('click', () => {
+                const inputCode = inputCodeTextarea.value;
+                const isHardcore = hardcoreModeCheckbox.checked;
+                const result = processCode(inputCode, isHardcore);
+                outputTextElement.textContent = result;
+                
+                populateCostTable(); 
+            });
+
+            hardcoreModeCheckbox.addEventListener('change', populateCostTable);
+            hardcoreModeCheckbox.addEventListener('change', () => {
+                // When Hardcore mode changes, re-process the code to update the total cost
+                if(inputCodeTextarea.value.trim() !== "") {
+                    processButton.click();
+                }
+            });
+
+
+            // Initial population of the cost table
+            populateCostTable();
+        };
+
+    </script>
+</body>
+</html>
+
