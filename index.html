@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LunarisX Cost Tool</title>
+    <title>LunarisX Coordinate Cost Tool</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -49,7 +49,7 @@
             padding: 20px;
             border: 1px solid #374151;
             width: 90%;
-            max-width: 600px; /* Increased max width for code sample */
+            max-width: 600px;
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         }
@@ -80,23 +80,23 @@
         <!-- HEADER WITH EXAMPLE BUTTON -->
         <div class="flex items-center justify-between mb-6 border-b border-gray-700 pb-2">
             <h1 class="text-3xl font-bold text-green-400">
-                LunarisX Cost Tool
+                LunarisX Coordinate Cost Tool
             </h1>
             <button id="exampleButton" onclick="openExampleModal()" class="px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-bold transition duration-200 flex items-center shadow-md shadow-purple-900/50">
                 <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.523 5.754 18 7.5 18s3.332.477 4.5 1.247m0-13C13.168 5.477 14.754 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.523 18.246 18 16.5 18s-3.332.477-4.5 1.247"></path></svg>
-                Example Strat
+                Load User Input Strat
             </button>
         </div>
         
         <p class="text-gray-400 mb-6">
-            This tool tracks Tower placement order (Index) and **automatically calculates the current upgrade level** to replace cost placeholders with real game costs.
+            This tool tracks Tower upgrades using **X and Z coordinates** as the unique identifier and **automatically calculates the current upgrade level** to replace cost placeholders with real game costs.
             <br>
-            **Supported cost formats:**
+            **Supported cost formats (X, Y, Z are coordinates):**
             <ul class="list-disc list-inside ml-4 mt-2 text-sm text-gray-300">
-                <li>Place: `placeTower(pos, "TowerName", cost)`</li>
-                <li>Upgrade (New simplified): `upgradeTower(<span class="text-red-400">INDEX</span>)`</li>
-                <li>Upgrade (Legacy): `upgradeTower(<span class="text-red-400">INDEX</span>, cost)`</li>
+                <li>Placement: `place(X, Y, Z, "TowerName", <span class="text-red-400">cost</span>)`</li>
+                <li>Upgrade: `upgrade(X, Y, Z, <span class="text-red-400">cost</span>)`</li>
             </ul>
+            <span class="text-yellow-400 font-medium">Note: The Y-coordinate in `upgrade` calls is ignored for tracking, as X and Z are used for matching.</span>
         </p>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -116,37 +116,15 @@
                 
                 <label for="inputCode" class="block text-sm font-medium mb-1 text-gray-300">Paste your code (example):</label>
                 <!-- Updated placeholder to reflect new input format -->
-                <textarea id="inputCode" rows="6" placeholder='placeTower(Vec3, "Scout", cost) -- Index 1
-placeTower(Vec3, "Sniper", "cost") -- Index 2
-upgradeTower(1) -- Scout Lvl 1 (New format)
-upgradeTower(1) -- Scout Lvl 2
-upgradeTower(2, cost) -- Sniper Lvl 1 (Legacy format)' class="w-full p-3 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-green-500 focus:border-green-500 mb-4"></textarea>
+                <textarea id="inputCode" rows="12" placeholder='place(-23.676, 1.708, -5.151, "Shotgunner", 700)
+place(-37.917, 1.927, -6.666, "Shotgunner", 524)
+upgrade(-23.676, 3.058, -5.151, 402) -- Shotgunner at -23.676,-5.151 Lvl 1
+upgrade(-37.917, 3.277, -6.666, 239) -- Shotgunner at -37.917,-6.666 Lvl 1
+upgrade(-37.917, 3.277, -6.666, 1428) -- Shotgunner at -37.917,-6.666 Lvl 2' class="w-full p-3 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-green-500 focus:border-green-500 mb-4"></textarea>
 
                 <button id="processButton" class="w-full py-3 px-4 bg-green-600 hover:bg-green-700 rounded-lg text-white font-bold transition duration-200 shadow-md shadow-green-900/50">
                     🔍 Lookup & Replace Costs
                 </button>
-                
-                <!-- NEW: Duplication Tool -->
-                <div class="mt-6 p-4 bg-gray-700 rounded-lg border border-yellow-500/50">
-                    <h3 class="text-lg font-semibold mb-3 text-yellow-300">⚡ Duplication Tool</h3>
-                    <div class="flex space-x-3 mb-3">
-                        <div class="flex-1">
-                            <label for="indexInput" class="block text-xs font-medium text-gray-400">Index (Tower #):</label>
-                            <input type="number" id="indexInput" min="1" placeholder="1" class="w-full p-2 rounded-lg bg-gray-600 border border-gray-500 text-white focus:ring-yellow-500 focus:border-yellow-500" value="1">
-                        </div>
-                        <div class="flex-1">
-                            <label for="dupInput" class="block text-xs font-medium text-gray-400">Dup (Repeat Count):</label>
-                            <!-- DEFAULT IS 1 -->
-                            <input type="number" id="dupInput" min="1" placeholder="1" class="w-full p-2 rounded-lg bg-gray-600 border border-gray-500 text-white focus:ring-yellow-500 focus:border-yellow-500" value="1">
-                        </div>
-                    </div>
-                    <button id="duplicateButton" class="w-full py-2 px-4 bg-yellow-600 hover:bg-yellow-700 rounded-lg text-white font-bold transition duration-200">
-                        ➕ Execute (Add Upgrades)
-                    </button>
-                    <p id="duplicateMessage" class="mt-2 text-xs text-red-400 hidden">
-                        <span class="font-bold">Error:</span> Index and Dup must be positive numbers.
-                    </p>
-                </div>
             </div>
 
             <!-- Column 2: Results -->
@@ -158,7 +136,7 @@ upgradeTower(2, cost) -- Sniper Lvl 1 (Legacy format)' class="w-full p-3 rounded
                     </button>
                 </div>
                 
-                <div id="outputContainer" class="p-4 bg-gray-700 rounded-lg border border-gray-600 min-h-[16rem]">
+                <div id="outputContainer" class="p-4 bg-gray-700 rounded-lg border border-gray-600 min-h-[22rem]">
                     <pre id="outputText" class="text-sm text-gray-200">Paste your code on the left and press the button to see the result.</pre>
                 </div>
             </div>
@@ -211,15 +189,15 @@ upgradeTower(2, cost) -- Sniper Lvl 1 (Legacy format)' class="w-full p-3 rounded
         </div>
     </div>
     
-    <!-- NEW Modal for Example Strat -->
+    <!-- Modal for Example Strat -->
     <div id="exampleModal" class="modal">
         <div class="modal-content max-w-2xl">
             <div class="flex justify-between items-center border-b pb-2 border-gray-600 mb-4">
-                <h3 class="text-xl font-bold text-purple-400">🍕 Lvl 1 Tower Placement Example</h3>
+                <h3 class="text-xl font-bold text-purple-400">💾 User-Provided Coordinate Strategy</h3>
                 <button onclick="closeModal('exampleModal')" class="text-gray-400 hover:text-white text-2xl font-bold leading-none">&times;</button>
             </div>
             <p class="text-gray-300 mb-4">
-                This example shows the placement and first upgrade (Lvl 1) for 25 towers.
+                This code demonstrates the `place` and `upgrade` syntax using X, Y, Z coordinates for tower identification.
             </p>
             <button onclick="loadExample(); closeModal('exampleModal');" class="w-full py-2 mb-4 px-4 bg-green-600 hover:bg-green-700 rounded-lg text-white font-bold transition duration-200">
                 Load this Example Code to Input Box
@@ -286,8 +264,8 @@ upgradeTower(2, cost) -- Sniper Lvl 1 (Legacy format)' class="w-full p-3 rounded
             "Hacker": { "Place": 1400, "Upgrade 1": 600, "Upgrade 2": 1250, "Upgrade 3": 7500, "Upgrade 4": 22000 }
         };
 
-        // Stores the tower name mapped to its placement index (1-based)
-        let towerIndexMap = {}; 
+        // Stores the tower state keyed by "X,Z" coordinates (1-based)
+        let towerState = {}; 
         
         let outputTextElement;
         let processButton;
@@ -296,370 +274,303 @@ upgradeTower(2, cost) -- Sniper Lvl 1 (Legacy format)' class="w-full p-3 rounded
         let costTableBody;
         let modalTableBody;
         let modalTitle;
-        let indexInput;
-        let dupInput;
-        let duplicateMessage;
 
-        // --- UPDATED EXAMPLE CODE (Cleaned comments) ---
-        const EXAMPLE_CODE = `placeTower(Vector3.new(7.75418, 1.03687, -24.25305), "Electroshocker", cost)
-upgradeTower(1, cost)
-placeTower(Vector3.new(-0.67019, 1.03687, -15.90981), "Rocketeer", cost)
-upgradeTower(2, cost)
-placeTower(Vector3.new(-0.61207, 1.03687, -12.83725), "Rocketeer", cost)
-upgradeTower(3, cost)
-placeTower(Vector3.new(-0.71965, 1.03687, -9.75270), "Rocketeer", cost)
-upgradeTower(4, cost)
-placeTower(Vector3.new(-0.65521, 1.03687, -6.62865), "Rocketeer", cost)
-upgradeTower(5, cost)
-placeTower(Vector3.new(2.23264, 1.03687, -8.15452), "Rocketeer", cost)
-upgradeTower(6, cost)
-placeTower(Vector3.new(2.22419, 1.03687, -11.23436), "Rocketeer", cost)
-upgradeTower(7, cost)
-placeTower(Vector3.new(2.39913, 1.03687, -14.38913), "Rocketeer", cost)
-upgradeTower(8, cost)
-placeTower(Vector3.new(2.20887, 1.03687, -17.44070), "Rocketeer", cost)
-upgradeTower(9, cost)
-placeTower(Vector3.new(-3.49797, 1.03687, -11.25871), "Commander", cost)
-upgradeTower(10, cost)
-placeTower(Vector3.new(-3.41905, 1.03687, -14.32773), "Commander", cost)
-upgradeTower(11, cost)
-placeTower(Vector3.new(-3.41586, 1.03687, -8.00747), "Commander", cost)
-upgradeTower(12, cost)
-placeTower(Vector3.new(-6.69524, 4.00740, -11.66319), "Ranger", cost)
-upgradeTower(13, cost)
-placeTower(Vector3.new(-4.99089, 4.00740, -8.99515), "Ranger", cost)
-upgradeTower(14, cost)
-placeTower(Vector3.new(-4.75861, 7.00740, -7.64855), "Ranger", cost)
-upgradeTower(15, cost)
-placeTower(Vector3.new(5.63877, 1.03687, -12.49786), "Electroshocker", cost)
-upgradeTower(16, cost)
-placeTower(Vector3.new(2.07390, 1.03687, -4.95058), "Electroshocker", cost)
-upgradeTower(17, cost)
-placeTower(Vector3.new(-4.82573, 7.00740, -4.58934), "Ranger", cost)
-upgradeTower(18, cost)
-placeTower(Vector3.new(-7.91268, 7.00740, -7.74334), "Ranger", cost)
-upgradeTower(19, cost)
-placeTower(Vector3.new(-8.00030, 7.00740, -4.70122), "Ranger", cost)
-upgradeTower(20, cost)
-placeTower(Vector3.new(-10.71475, 7.00740, -6.19627), "Ranger", cost)
-upgradeTower(21, cost)
-placeTower(Vector3.new(2.15463, 1.03687, -25.42523), "Commander", cost)
-upgradeTower(22, cost)
-placeTower(Vector3.new(-1.06437, 1.03687, -3.10217), "Turret", cost)
-upgradeTower(23, cost)
-placeTower(Vector3.new(-5.22454, 1.03687, -2.68031), "Turret", cost)
-upgradeTower(24, cost)
-placeTower(Vector3.new(-9.31335, 1.03687, -2.52221), "Turret", cost)
-upgradeTower(25, cost)`;
-        // --- END UPDATED EXAMPLE CODE ---
+        // --- UPDATED EXAMPLE CODE (Using the new coordinate syntax) ---
+        const EXAMPLE_CODE = `place(-23.676, 1.708, -5.151, "Shotgunner", 700)
+place(-37.917, 1.927, -6.666, "Shotgunner", 524)
+upgrade(-23.676, 3.058, -5.151, 402)
+upgrade(-37.917, 3.277, -6.666, 239)
+upgrade(-37.917, 3.277, -6.666, 1428)
+upgrade(-23.676, 3.058, -5.151, 1431)
+place(-27.768, 1.989, -3.074, "Electroshocker", 1576)
+upgrade(-27.768, 3.339, -3.074, 621)
+upgrade(-27.768, 3.339, -3.074, 1037)
+place(-28.763, 1.446, -10.221, "Commander", 1856)
+place(-25.703, 1.763, -5.269, "Shotgunner", 625)
+upgrade(-25.703, 3.113, -5.269, 263)
+upgrade(-25.703, 3.113, -5.269, 2078)
+place(-22.800, 1.620, -3.144, "Shotgunner", 677)
+upgrade(-22.800, 2.970, -3.144, 260)
+upgrade(-22.800, 2.970, -3.144, 1433)
+place(-24.891, 1.847, -3.229, "Shotgunner", 1418)
+upgrade(-24.891, 3.197, -3.229, 968)
+upgrade(-24.891, 3.197, -3.229, 1993)
+place(-25.450, 1.621, -0.725, "Freezer", 788)
+upgrade(-25.450, 2.971, -0.725, 391)
+upgrade(-25.450, 2.971, -0.725, 1334)
+place(-30.449, 1.950, -4.334, "Shotgunner", 434)
+place(-30.480, 1.955, -4.280, "Shotgunner", 460)
+upgrade(-30.480, 3.305, -4.280, 473)
+upgrade(-30.480, 3.305, -4.280, 2998)
+place(-22.551, 1.520, -0.970, "Shotgunner", 1933)
+upgrade(-22.551, 2.870, -0.970, 1483)
+upgrade(-22.551, 2.870, -0.970, 1618)
+upgrade(-28.763, 3.146, -10.221, 1413)
+upgrade(-28.763, 3.146, -10.221, 964)
+upgrade(-28.763, 3.146, -10.221, 3776)`;
 
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Get DOM elements
+            outputTextElement = document.getElementById('outputText');
+            processButton = document.getElementById('processButton');
+            hardcoreModeCheckbox = document.getElementById('hardcoreMode');
+            inputCodeTextarea = document.getElementById('inputCode');
+            costTableBody = document.getElementById('costTableBody');
+            modalTableBody = document.getElementById('modalTableBody');
+            modalTitle = document.getElementById('modalTitle');
+
+            // Set up event listeners
+            processButton.addEventListener('click', processCode);
+            hardcoreModeCheckbox.addEventListener('change', processCode);
+
+            // Populate the Tower Cost Table on load
+            populateTable();
+        });
+        
+        // --- UTILITY FUNCTIONS ---
 
         /**
-         * Calculates the Hardcore Cost (1.5x rounded up to the nearest integer).
+         * Safely calculates the cost (with Hardcore multiplier).
+         * @param {number} cost - The base cost.
+         * @returns {number} The calculated cost.
          */
-        const getHardcoreCost = (baseCost) => Math.ceil(baseCost * 1.5); 
+        function getCost(cost) {
+            const isHardcore = hardcoreModeCheckbox.checked;
+            return isHardcore ? Math.ceil(cost * 1.5) : cost;
+        }
 
         /**
-         * Looks up the cost based on tower name and type (Place or Upgrade X).
+         * Renders the main table of tower placement costs.
          */
-        function lookupCost(towerName, costType, isHardcore) {
+        function populateTable() {
+            costTableBody.innerHTML = '';
+            const sortedTowerNames = Object.keys(TOWER_COSTS).sort();
+
+            sortedTowerNames.forEach(towerName => {
+                const normalCost = TOWER_COSTS[towerName].Place;
+                const hardcoreCost = getCost(normalCost);
+
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-700/50 cursor-pointer transition duration-150 border-t border-gray-700';
+                row.innerHTML = `
+                    <td class="p-2 font-bold text-yellow-300" onclick="openUpgradeModal('${towerName}')">${towerName}</td>
+                    <td class="p-2 text-right text-gray-200">$${normalCost.toLocaleString()}</td>
+                    <td class="p-2 text-right text-red-400">$${hardcoreCost.toLocaleString()}</td>
+                `;
+                costTableBody.appendChild(row);
+            });
+        }
+
+        /**
+         * Calculates the cost for a given tower and target level.
+         * @param {string} towerName 
+         * @param {number} targetLevel 
+         * @returns {number | null} The cost or null if level is out of bounds.
+         */
+        function calculateUpgradeCost(towerName, targetLevel) {
             const towerData = TOWER_COSTS[towerName];
             if (!towerData) return null;
 
-            const baseCost = towerData[costType];
-            if (baseCost === undefined) return null;
-
-            return isHardcore ? getHardcoreCost(baseCost) : baseCost;
-        }
-        
-        // Regex for placeTower
-        const getPlaceRegex = () => {
-             // G1: Prefix up to the tower name's closing quote
-             // G2: Tower Name
-             // G3: The separator after tower name and before cost
-             // G4: The cost placeholder, allowing "cost" or cost
-             // G5: The closing parenthesis and anything after
-             return /(\s*place\s*Tower\s*\([\s\S]*?,\s*['"])([^'"]+?)(['"]\s*,\s*)(['"]?([cC][oO][sS][t]|\d+)'?)(['"]?)(\s*\))/i;
-        };
-
-        /**
-         * Regex for upgradeTower. Captures both 2-argument (new: upgradeTower(1)) and 3-argument (legacy: upgradeTower(1, cost)) formats.
-         * (G1: Prefix up to index) (G2: Index) (G3: Optional ", cost_placeholder") (G4: inner cost keyword/number) (G5: Suffix/End)
-         */
-        const getUpgradeRegex = () => {
-             // G1: Prefix up to index
-             // G2: Index
-             // G3: Optional separator and cost placeholder (covers , cost or , "cost" or , 1234). Optionality is handled by ? at the end of the group.
-             // G4: inner cost keyword or number
-             // G5: Suffix/End
-            return /(\s*upgrade\s*Tower\s*\([\s\S]*?)(\d+)(\s*,\s*['"]?([cC][oO][sS][t]|\d+)'?)?(\s*\))/i;
-        };
-
-
-        /**
-         * Pre-scans the input code to map the indexes of placeTower commands to the tower name.
-         */
-        function preProcessPlaceCommands(inputCode) {
-            towerIndexMap = {};
-            let index = 1;
-            
-            // Regex to capture the tower name
-            const preProcessRegex = /(\s*place\s*Tower\s*\([\s\S]*?,\s*['"])([^'"]+?)(['"]\s*,\s*)/i;
-            const lines = inputCode.split('\n');
-
-            lines.forEach(line => {
-                // Only count lines that contain the placeTower function call and are not commented out
-                if (line.toLowerCase().includes('placetower(') && !line.trim().startsWith('--') && !line.trim().startsWith('//')) {
-                    
-                    const placeMatch = line.match(preProcessRegex);
-                    
-                    if (placeMatch) {
-                        const towerName = placeMatch[2].trim();
-                        if (towerName) {
-                            towerIndexMap[index] = towerName;
-                            index++;
-                        }
-                    }
-                }
-            });
-        }
-
-        /**
-         * The main function to process the input code string.
-         */
-        function processCode(inputCode, isHardcore) {
-            
-            if (inputCode.trim() === '') {
-                 return "❌ ERROR: Invalid format. Input cannot be empty.";
+            if (targetLevel === 0) {
+                return towerData.Place;
             }
 
-            // Step 1: Pre-process the code to map indexes to tower names
-            preProcessPlaceCommands(inputCode);
+            const upgradeKey = `Upgrade ${targetLevel}`;
+            const baseCost = towerData[upgradeKey];
             
-            let outputCode = '';
-            let matchesFound = 0;
-            let totalCost = 0; 
+            if (baseCost !== undefined) {
+                return getCost(baseCost);
+            }
+            return null; // Upgrade level not found
+        }
+        
+        // --- MAIN PROCESSING LOGIC ---
+
+        /**
+         * Processes the input code line by line, tracking tower states by X,Z coordinates
+         * and replacing cost placeholders.
+         */
+        function processCode() {
+            // Reset state for new run
+            towerState = {}; 
             
-            // Map to track the current upgrade level for each Tower Index 
-            const upgradeCounterMap = {}; 
-            Object.keys(towerIndexMap).forEach(index => {
-                upgradeCounterMap[index] = 0;
-            });
+            const lines = inputCodeTextarea.value.split('\n');
+            const processedLines = [];
+            let errorFound = false;
 
-            const placeRegex = getPlaceRegex();
-            const upgradeRegex = getUpgradeRegex();
+            // Regex for matching the new coordinate functions
+            // Group 1: Function name (place or upgrade)
+            // Group 2: X-coord
+            // Group 3: Y-coord
+            // Group 4: Z-coord
+            // Group 5: Tower Name (only for place) / Cost (for both)
+            // Group 6: Cost (only for place)
+            const placeRegex = /(place)\s*\(([^,]+),\s*([^,]+),\s*([^,]+),\s*["']([^"']+)["'],\s*([a-zA-Z0-9_\'"]+)\s*\)/;
+            const upgradeRegex = /(upgrade)\s*\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([a-zA-Z0-9_\'"]+)\s*\)/;
+            
+            lines.forEach((originalLine, index) => {
+                let line = originalLine.trim();
+                let match;
+                let processedLine = originalLine;
+                const lineNumber = index + 1;
 
-            const lines = inputCode.split('\n');
-
-            lines.forEach(line => {
-                // Skip comments (allowing both Lua-style -- and JS-style //)
-                if (line.trim().startsWith('--') || line.trim().startsWith('//')) {
-                    outputCode += line + '\n';
-                    return;
-                }
-                
-                let processedLine = line;
-
-                // --- 1. PROCESS placeTower ---
-                if (line.toLowerCase().includes('placetower')) {
-                    const placeMatch = line.match(placeRegex);
+                if (line.startsWith('place')) {
+                    match = line.match(placeRegex);
                     
-                    if (placeMatch) {
-                        const towerName = placeMatch[2].trim(); 
-                        const finalCost = lookupCost(towerName, "Place", isHardcore);
+                    if (match) {
+                        const [, funcName, x, y, z, towerName, costPlaceholder] = match;
                         
-                        processedLine = line.replace(placeRegex, (match, prefixToTowerName, towerName, separatorToCost, costPlaceholderGroup, costKeywordOrNumber, trailingQuote, endSuffix) => {
-                             if (finalCost !== null) {
-                                matchesFound++;
-                                totalCost += finalCost; // Add cost to total
-                                // Replace cost placeholder (G4) with numeric cost (unquoted)
-                                return `${prefixToTowerName}${towerName}${separatorToCost}${finalCost}${endSuffix}`;
-                            } else {
-                                console.warn(`[Place] Tower name not found or cost missing: ${towerName}`);
-                                return match; 
-                            }
-                        });
+                        // Use X and Z as the unique identifier key
+                        const key = `${x},${z}`;
+                        
+                        // Check if the tower name is valid
+                        if (!TOWER_COSTS[towerName]) {
+                            processedLine = `// ⚠️ ERROR L${lineNumber}: Unknown tower: "${towerName}"\n${originalLine}`;
+                            errorFound = true;
+                        } else if (towerState[key]) {
+                            processedLine = `// ⚠️ WARNING L${lineNumber}: Tower at ${key} already exists. Resetting level.\n${originalLine}`;
+                            towerState[key].level = 0; // Overwrite if duplicate placement is found
+                        } else {
+                            // Initial placement
+                            towerState[key] = { name: towerName, level: 0 };
+                        }
+
+                        // Calculate placement cost (Level 0)
+                        const cost = calculateUpgradeCost(towerName, 0);
+                        if (cost !== null) {
+                            processedLine = originalLine.replace(costPlaceholder, cost.toLocaleString());
+                        } else {
+                            processedLine = `// ⚠️ ERROR L${lineNumber}: Could not find base cost for ${towerName}\n${originalLine}`;
+                            errorFound = true;
+                        }
+                    } else if (line.includes('place')) {
+                        processedLine = `// ⚠️ SYNTAX ERROR L${lineNumber}: Cannot parse 'place' command. Check arguments.\n${originalLine}`;
+                        errorFound = true;
                     }
-                }
 
-                // --- 2. PROCESS upgradeTower (Handling both 2-arg and 3-arg input) ---
-                else if (line.toLowerCase().includes('upgradetower')) {
-                    const upgradeMatch = line.match(upgradeRegex);
+                } else if (line.startsWith('upgrade')) {
+                    match = line.match(upgradeRegex);
 
-                    if (upgradeMatch) {
-                        
-                        const towerIndex = parseInt(upgradeMatch[2], 10);
-                        const towerName = towerIndexMap[towerIndex]; 
-                        
-                        if (towerName) {
-                            // Increment counter for this index
-                            upgradeCounterMap[towerIndex] = (upgradeCounterMap[towerIndex] || 0) + 1;
-                            const currentLevel = upgradeCounterMap[towerIndex];
-                            const costType = `Upgrade ${currentLevel}`;
-                            const finalCost = lookupCost(towerName, costType, isHardcore);
+                    if (match) {
+                        // For upgrade, we use the coordinates to find the existing tower state
+                        const [, funcName, x, y, z, costPlaceholder] = match;
+                        const key = `${x},${z}`;
+
+                        if (towerState[key]) {
+                            const tower = towerState[key];
+                            const nextLevel = tower.level + 1;
+                            const towerName = tower.name;
+
+                            const cost = calculateUpgradeCost(towerName, nextLevel);
                             
-                            if (finalCost !== null) {
-                                matchesFound++;
-                                totalCost += finalCost; // Add cost to total
-                                
-                                processedLine = line.replace(upgradeRegex, (match, prefix, index, optionalCostGroup, costKeywordOrNumber, endSuffix) => {
-                                    
-                                    // If cost placeholder was present (Legacy format: upgradeTower(1, cost) or upgradeTower(1, 1234))
-                                    if (optionalCostGroup) {
-                                        // Replace the optionalCostGroup with ", finalCost"
-                                        return `${prefix}${index}, ${finalCost}${endSuffix}`;
-                                    } else {
-                                        // If cost placeholder was NOT present (New format: upgradeTower(1))
-                                        // Insert ", finalCost" before the end suffix
-                                        return `${prefix}${index}, ${finalCost}${endSuffix}`;
-                                    }
-                                });
-
+                            if (cost !== null) {
+                                processedLine = originalLine.replace(costPlaceholder, cost.toLocaleString());
+                                tower.level = nextLevel; // Update state
                             } else {
-                                // Max level reached or cost not defined. Revert counter and warn.
-                                console.warn(`[Upgrade] Max level reached or cost not defined for ${towerName} (Index ${towerIndex}, Level ${currentLevel}). Skipping.`);
-                                upgradeCounterMap[towerIndex]--; 
+                                processedLine = `// ⚠️ ERROR L${lineNumber}: Max level reached for ${towerName} at ${key} (tried Lvl ${nextLevel}).\n${originalLine}`;
+                                errorFound = true;
                             }
                         } else {
-                            console.warn(`[Upgrade] Index ${towerIndex} not found in placement map.`);
+                            processedLine = `// ⚠️ ERROR L${lineNumber}: No tower found at coordinates X:${x}, Z:${z} to upgrade.\n${originalLine}`;
+                            errorFound = true;
                         }
+                    } else if (line.includes('upgrade')) {
+                        processedLine = `// ⚠️ SYNTAX ERROR L${lineNumber}: Cannot parse 'upgrade' command. Check arguments.\n${originalLine}`;
+                        errorFound = true;
                     }
                 }
+                
+                processedLines.push(processedLine);
+            });
 
-                outputCode += processedLine + '\n';
-            }); 
-
-            // Final processing/cleanup
-            outputCode = outputCode.trim();
-            const costModeText = isHardcore ? "Hardcore" : "Normal";
+            outputTextElement.textContent = processedLines.join('\n');
             
-            // Add total cost to the top of the output
-            outputCode = `// --- TOTAL COST (${costModeText}): ${totalCost.toLocaleString()} ---\n` + outputCode;
-
-
-            if (matchesFound === 0) {
-                 return "⚠️ WARNING: No valid 'placeTower' or 'upgradeTower' commands found. Please check format.";
+            if (errorFound) {
+                 outputTextElement.textContent = `// Processing finished with ERRORS. Check the annotated lines below.\n\n` + outputTextElement.textContent;
+            } else if (processedLines.length > 0) {
+                 outputTextElement.textContent = `// Successfully processed ${processedLines.length} lines.\n\n` + outputTextElement.textContent;
             }
-            
-            return outputCode;
         }
+
+
+        // --- MODAL AND UI FUNCTIONS ---
         
         /**
-         * Appends multiple upgradeTower(index) calls to the input textarea.
-         */
-        function duplicateUpgradeCalls() {
-            const index = parseInt(indexInput.value, 10);
-            const dup = parseInt(dupInput.value, 10);
-
-            duplicateMessage.classList.add('hidden'); // Clear previous errors
-
-            if (isNaN(index) || index < 1 || isNaN(dup) || dup < 1) {
-                duplicateMessage.classList.remove('hidden');
-                return;
-            }
-
-            let newCalls = '';
-            for (let i = 0; i < dup; i++) {
-                // Each call always ends with a newline
-                newCalls += `upgradeTower(${index})\n`; 
-            }
-
-            // Get current content
-            let existingValue = inputCodeTextarea.value;
-
-            // Ensure the new block starts on a clean line
-            if (existingValue.length > 0 && !existingValue.endsWith('\n')) {
-                existingValue += '\n';
-            } else if (existingValue.length === 0) {
-                existingValue = ''; // Start from blank if empty
-            }
-            
-            // Append the new calls
-            inputCodeTextarea.value = existingValue + newCalls;
-            
-            // Clear inputs and set focus for next use
-            indexInput.value = '1';
-            dupInput.value = '1';
-            indexInput.focus();
-        }
-
-
-        // --- CLIPBOARD FUNCTIONALITY ---
-
-        /**
-         * Fallback mechanism using document.execCommand('copy')
-         */
-        function fallbackCopy(text, button, originalText) {
-            const tempTextArea = document.createElement('textarea');
-            tempTextArea.value = text;
-            tempTextArea.style.position = 'fixed';
-            tempTextArea.style.left = '-9999px';
-            tempTextArea.style.top = '0';
-
-            document.body.appendChild(tempTextArea);
-            tempTextArea.focus();
-            tempTextArea.select();
-
-            try {
-                const successful = document.execCommand('copy');
-                if (successful) {
-                    button.textContent = 'Copied! ✅';
-                    setTimeout(() => {
-                        button.textContent = originalText;
-                    }, 1500);
-                } else {
-                    button.textContent = 'Failed ❌';
-                    setTimeout(() => {
-                        button.textContent = originalText;
-                    }, 2000);
-                }
-            } catch (err) {
-                button.textContent = 'Error ❌';
-                setTimeout(() => {
-                    button.textContent = originalText;
-                }, 2000);
-            }
-
-            document.body.removeChild(tempTextArea);
-        }
-        
-        /**
-         * Copies the content of the outputText pre element to the clipboard.
+         * Copies the output text to the clipboard.
          */
         function copyOutput() {
-            const textToCopy = outputTextElement.textContent;
+            const outputText = outputTextElement.textContent;
+            if (outputText === "Paste your code on the left and press the button to see the result.") {
+                return;
+            }
+            // Use execCommand('copy') as navigator.clipboard may not work in iframes
+            const textarea = document.createElement('textarea');
+            textarea.value = outputText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            // Simple visual feedback
             const copyButton = document.getElementById('copyButton');
-            const originalText = 'Copy All';
-
-            if (textToCopy.includes("Paste your code") || textToCopy.includes("No valid")) {
-                 copyButton.textContent = 'No code to copy!';
-                 setTimeout(() => { copyButton.textContent = originalText; }, 2000);
-                 return;
-            }
-
-            // 1. Try modern clipboard API
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(textToCopy)
-                    .then(() => {
-                        copyButton.textContent = 'Copied! ✅';
-                        setTimeout(() => {
-                            copyButton.textContent = originalText;
-                        }, 1500);
-                    })
-                    .catch(err => {
-                        // 2. Fallback
-                        fallbackCopy(textToCopy, copyButton, originalText);
-                    });
-            } else {
-                // 2. Fallback for old browsers/iframe
-                fallbackCopy(textToCopy, copyButton, originalText);
-            }
+            copyButton.textContent = 'Copied!';
+            setTimeout(() => {
+                copyButton.textContent = 'Copy All';
+            }, 1500);
         }
 
-        // --- UI & EVENT HANDLERS ---
-        
         /**
-         * Opens the Pizza Party Strat Example modal.
+         * Opens the modal to show upgrade costs for a specific tower.
+         * @param {string} towerName 
+         */
+        function openUpgradeModal(towerName) {
+            modalTitle.textContent = `${towerName} Upgrade Costs`;
+            modalTableBody.innerHTML = '';
+            
+            const towerData = TOWER_COSTS[towerName];
+            if (!towerData) return;
+
+            // Placement cost
+            let row = document.createElement('tr');
+            row.className = 'border-t border-gray-700 bg-gray-700 font-bold';
+            row.innerHTML = `
+                <td class="p-2 text-left">Placement (Lvl 0)</td>
+                <td class="p-2 text-right">$${towerData.Place.toLocaleString()}</td>
+                <td class="p-2 text-right text-red-400">$${getCost(towerData.Place).toLocaleString()}</td>
+            `;
+            modalTableBody.appendChild(row);
+
+            // Upgrade costs
+            for (let i = 1; i <= Object.keys(towerData).length - 1; i++) {
+                const upgradeKey = `Upgrade ${i}`;
+                const normalCost = towerData[upgradeKey];
+                
+                if (normalCost !== undefined) {
+                    const hardcoreCost = getCost(normalCost);
+                    row = document.createElement('tr');
+                    row.className = 'border-t border-gray-700 hover:bg-gray-700/50';
+                    row.innerHTML = `
+                        <td class="p-2 text-left">Level ${i}</td>
+                        <td class="p-2 text-right">$${normalCost.toLocaleString()}</td>
+                        <td class="p-2 text-right text-red-400">$${hardcoreCost.toLocaleString()}</td>
+                    `;
+                    modalTableBody.appendChild(row);
+                }
+            }
+            document.getElementById('upgradeModal').style.display = 'block';
+        }
+
+        /**
+         * Closes a specified modal.
+         * @param {string} id - The ID of the modal to close.
+         */
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        /**
+         * Opens the modal containing the example code.
          */
         function openExampleModal() {
             document.getElementById('exampleCodeText').textContent = EXAMPLE_CODE;
@@ -671,125 +582,22 @@ upgradeTower(25, cost)`;
          */
         function loadExample() {
             inputCodeTextarea.value = EXAMPLE_CODE;
-            // Automatically process the code after loading the example
-            processButton.click();
+            processCode(); // Automatically process the loaded code
         }
-
+        
         /**
-         * Fills the main cost table with placement costs.
-         */
-        function populateCostTable() {
-            costTableBody.innerHTML = '';
-            const isHardcore = hardcoreModeCheckbox.checked;
-
-            const sortedTowerNames = Object.keys(TOWER_COSTS).sort();
-
-            sortedTowerNames.forEach(name => {
-                const normalCost = TOWER_COSTS[name]["Place"];
-                const hardcoreCost = getHardcoreCost(normalCost);
-
-                const row = document.createElement('tr');
-                row.className = 'border-t border-gray-700 hover:bg-gray-700 cursor-pointer';
-                row.setAttribute('onclick', `showUpgradeCosts('${name}', ${isHardcore})`);
-
-                row.innerHTML = `
-                    <td class="p-2 text-left font-semibold text-green-300">${name}</td>
-                    <td class="p-2 text-right">${normalCost}</td>
-                    <td class="p-2 text-right text-red-400">${hardcoreCost}</td>
-                `;
-                costTableBody.appendChild(row);
-            });
-        }
-
-        /**
-         * Shows the modal with detailed upgrade costs for a selected tower.
-         */
-        function showUpgradeCosts(towerName, isHardcore) {
-            modalTitle.textContent = `${towerName} - Upgrade Costs (${isHardcore ? 'Hardcore' : 'Normal'})`;
-            modalTableBody.innerHTML = '';
-            const towerData = TOWER_COSTS[towerName];
-            
-            if (!towerData) return;
-
-            const upgradeLevels = Object.keys(towerData)
-                .filter(key => key.startsWith("Upgrade "))
-                .sort((a, b) => parseInt(a.split(' ')[1]) - parseInt(b.split(' ')[1]));
-
-            upgradeLevels.forEach((costType, index) => {
-                const normalCost = towerData[costType];
-                const hardcoreCost = getHardcoreCost(normalCost);
-                const level = index + 1;
-
-                const row = document.createElement('tr');
-                row.className = 'border-t border-gray-700';
-                row.innerHTML = `
-                    <td class="p-2 text-left font-semibold">Level ${level}</td>
-                    <td class="p-2 text-right">${normalCost}</td>
-                    <td class="p-2 text-right text-red-400">${isHardcore ? hardcoreCost : '-'}</td>
-                `;
-                modalTableBody.appendChild(row);
-            });
-
-            document.getElementById('upgradeModal').style.display = 'block';
-        }
-
-        /**
-         * General function to close any modal.
-         */
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
-
-        /**
-         * Opens the Source Info modal.
+         * Opens the source info modal.
          */
         function openSourceModal() {
-            document.getElementById('sourceModal').style.display = 'block';
+             document.getElementById('sourceModal').style.display = 'block';
         }
-
-
-        window.onload = function() {
-            // Get DOM references
-            outputTextElement = document.getElementById('outputText');
-            processButton = document.getElementById('processButton');
-            hardcoreModeCheckbox = document.getElementById('hardcoreMode');
-            inputCodeTextarea = document.getElementById('inputCode');
-            costTableBody = document.getElementById('costTableBody');
-            modalTableBody = document.getElementById('modalTableBody');
-            modalTitle = document.getElementById('modalTitle');
-            
-            // References for Duplication Tool
-            indexInput = document.getElementById('indexInput');
-            dupInput = document.getElementById('dupInput');
-            const duplicateButton = document.getElementById('duplicateButton');
-            duplicateMessage = document.getElementById('duplicateMessage');
-
-            // Set up Event Listeners
-            processButton.addEventListener('click', () => {
-                const inputCode = inputCodeTextarea.value;
-                const isHardcore = hardcoreModeCheckbox.checked;
-                const result = processCode(inputCode, isHardcore);
-                outputTextElement.textContent = result;
-                
-                populateCostTable(); 
-            });
-            
-            duplicateButton.addEventListener('click', duplicateUpgradeCalls);
-
-
-            hardcoreModeCheckbox.addEventListener('change', populateCostTable);
-            hardcoreModeCheckbox.addEventListener('change', () => {
-                // When Hardcore mode changes, re-process the code to update the total cost
-                if(inputCodeTextarea.value.trim() !== "") {
-                    processButton.click();
-                }
-            });
-
-
-            // Initial population of the cost table
-            populateCostTable();
-        };
-
+        
+        // Close modals if the user clicks outside of them
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = "none";
+            }
+        }
     </script>
 </body>
 </html>
