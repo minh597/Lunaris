@@ -134,6 +134,7 @@ upgrade(-27.768, 3.339, -3.074, cost)' class="w-full p-3 rounded-lg bg-gray-700 
             <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-semibold text-blue-400">💡 Results (Modified Code)</h2>
+                    <span id="totalCostDisplay" class="text-lg font-bold text-yellow-300">Tổng Chi Phí: 0</span>
                     <button id="copyButton" onclick="copyOutput()" class="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition duration-200">
                         Copy All
                     </button>
@@ -277,6 +278,7 @@ upgrade(-27.768, 3.339, -3.074, cost)' class="w-full p-3 rounded-lg bg-gray-700 
         let costTableBody;
         let modalTableBody;
         let modalTitle;
+        let totalCostDisplay;
         
         // --- EXAMPLE CODE (Using the new coordinate format) ---
         const EXAMPLE_CODE = `place(-23.68, 1.71, -5.15, "Shotgunner", cost)
@@ -404,7 +406,6 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
                     }
                 }
             });
-            // console.log("Tower Coords Map:", towerCoordsMap);
         }
 
         /**
@@ -413,14 +414,13 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
         function processCode(inputCode, isHardcore) {
             
             if (inputCode.trim() === '') {
-                 return "❌ ERROR: Invalid format. Input cannot be empty.";
+                 return { outputCode: "❌ LỖI: Đầu vào không được để trống.", totalCost: 0 };
             }
 
             // Step 1: Pre-process the code to map unique X,Z coordinates to tower names
             preProcessPlaceCommands(inputCode);
             
             let outputCode = '';
-            let matchesFound = 0;
             let totalCost = 0; 
             
             // Create a temporary, writable copy of the map for upgrade tracking during processing
@@ -432,13 +432,14 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
             const lines = inputCode.split('\n');
 
             lines.forEach(line => {
-                // Skip comments
+                // Skip comments but include them in output to preserve the original script structure
                 if (line.trim().startsWith('--') || line.trim().startsWith('//')) {
                     outputCode += line + '\n';
                     return;
                 }
                 
                 let processedLine = line;
+                let costReplaced = false;
 
                 // --- 1. PROCESS place(X, Y, Z, "TowerName", cost) ---
                 if (line.toLowerCase().includes('place(')) {
@@ -455,8 +456,8 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
                         
                         processedLine = line.replace(placeRegex, (match, prefix, x, y, z, name, costPlaceholder, endSuffix) => {
                              if (finalCost !== null) {
-                                matchesFound++;
                                 totalCost += finalCost; 
+                                costReplaced = true;
                                 // Return the full line with the cost placeholder (G6) replaced by the numeric cost
                                 return `${prefix}${x}, ${y}, ${z}, "${name}", ${finalCost}${endSuffix}`;
                             } else {
@@ -475,7 +476,6 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
                         
                         const xStr = upgradeMatch[2];
                         const zStr = upgradeMatch[4];
-                        const costPlaceholder = upgradeMatch[5];
                         
                         // Use the key derived from the X, Z coords for lookup
                         const key = getCoordKey(xStr, zStr);
@@ -491,8 +491,8 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
                             const finalCost = lookupCost(towerName, costType, isHardcore);
                             
                             if (finalCost !== null) {
-                                matchesFound++;
                                 totalCost += finalCost; 
+                                costReplaced = true;
                                 
                                 processedLine = line.replace(upgradeRegex, (match, prefix, x, y, z, costPlaceholder, endSuffix) => {
                                     // Replace the cost placeholder (G5) with the numeric cost
@@ -505,7 +505,7 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
                                 towerInfo.upgradeLevel--; 
                             }
                         } else {
-                            console.warn(`[Upgrade] Tower not found at X:${roundCoord(xStr)}, Z:${roundCoord(zStr)} in placement map.`);
+                            console.warn(`[Upgrade] Tower not found at X:${roundCoord(xStr)}, Z:${roundCoord(zStr)} in placement map. Ensure 'place' command comes first.`);
                         }
                     }
                 }
@@ -513,19 +513,17 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
                 outputCode += processedLine + '\n';
             }); 
 
-            // Final processing/cleanup
-            outputCode = outputCode.trim();
             const costModeText = isHardcore ? "Hardcore" : "Normal";
             
-            // Add total cost to the top of the output
-            outputCode = `// --- TOTAL COST (${costModeText}): ${totalCost.toLocaleString()} ---\n` + outputCode;
-
-
-            if (matchesFound === 0) {
-                 return "⚠️ WARNING: No valid 'place' or 'upgrade' commands found. Please check format.";
+            if (outputCode.trim() === '') {
+                 return { outputCode: "❌ LỖI: Không tìm thấy lệnh hợp lệ nào trong đầu vào.", totalCost: 0 };
             }
-            
-            return outputCode;
+
+            return {
+                outputCode: outputCode.trim(),
+                totalCost: totalCost,
+                costMode: costModeText
+            };
         }
         
         // --- CLIPBOARD FUNCTIONALITY (Same as before) ---
@@ -575,7 +573,7 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
             const copyButton = document.getElementById('copyButton');
             const originalText = 'Copy All';
 
-            if (textToCopy.includes("Paste your code") || textToCopy.includes("No valid")) {
+            if (textToCopy.includes("Paste your code") || textToCopy.includes("LỖI")) {
                  copyButton.textContent = 'No code to copy!';
                  setTimeout(() => { copyButton.textContent = originalText; }, 2000);
                  return;
@@ -701,13 +699,22 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
             costTableBody = document.getElementById('costTableBody');
             modalTableBody = document.getElementById('modalTableBody');
             modalTitle = document.getElementById('modalTitle');
+            totalCostDisplay = document.getElementById('totalCostDisplay'); // New reference
             
             // Set up Event Listeners
             processButton.addEventListener('click', () => {
                 const inputCode = inputCodeTextarea.value;
                 const isHardcore = hardcoreModeCheckbox.checked;
                 const result = processCode(inputCode, isHardcore);
-                outputTextElement.textContent = result;
+                
+                // Update output code and total cost display
+                outputTextElement.textContent = result.outputCode;
+                
+                if (result.totalCost > 0) {
+                    totalCostDisplay.textContent = `Tổng Chi Phí (${result.costMode}): ${result.totalCost.toLocaleString()}`;
+                } else {
+                    totalCostDisplay.textContent = `Tổng Chi Phí: 0`;
+                }
                 
                 populateCostTable(); 
             });
