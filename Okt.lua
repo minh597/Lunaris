@@ -7,7 +7,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- === CONFIGURATION ===
 local TARGET_TEXT = "CHALET"           -- Text to find in map name
 local SOLO_ONLY = true                 -- Only enter if empty
-local CHECK_INTERVAL = 2               -- Scan every 2 seconds
+local CHECK_INTERVAL = 1              -- Scan every 2 seconds
 local MAX_PLAYERS = 1                  -- Return to lobby if players >= this
 local LOBBY_PLACE_ID = game.PlaceId    -- Place ID to return to (change if needed)
 -- =====================
