@@ -10,7 +10,7 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- === CONFIGURATION ===
-local TARGET_TEXT = "map"           -- Text to find in map name
+local TARGET_TEXT = map           -- Text to find in map name
 local SOLO_ONLY = true                 -- Only enter if empty
 local CHECK_INTERVAL = 1               -- Scan every 1 second
 local MAX_PLAYERS = 1                  -- Return to lobby if players >= this
