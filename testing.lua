@@ -1,4 +1,4 @@
-loadstring(game:HttpGet("local LunarisX = getgenv().LunarisX or {}
+local LunarisX = getgenv().LunarisX or {}
 local map = LunarisX.Map
 
 local Players = game:GetService("Players")
@@ -263,4 +263,4 @@ spawn(function()
         end
         task.wait(CHECK_INTERVAL)
     end
-end)"))()
+end)
