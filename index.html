@@ -3,16 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>egg Cost Tool (Coordinate Tracker)</title>
-    <!-- Load Tailwind CSS -->
+    <title>Tower Cost Tool (Coordinate Tracker)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
             color: #c9d1d9;
             min-height: 10vh;
-            
-            /* --- CUSTOM BACKGROUND IMAGE --- */
             background-image: url('https://i.post.cc/0QyD7v2G/black-dark-space-texture.jpg'); 
             background-size: cover;
             background-attachment: fixed; 
@@ -23,7 +20,6 @@
             white-space: pre-wrap;
             word-wrap: break-word;
         }
-        /* Adjust background colors for content boxes */
         .bg-gray-800 {
             background-color: rgba(31, 41, 55, 0.9); 
             backdrop-filter: blur(2px); 
@@ -31,8 +27,6 @@
         .bg-gray-700, .bg-gray-700\/50, .modal-content {
             background-color: rgba(55, 65, 81, 0.95) !important; 
         }
-
-        /* Custom modal styles */
         .modal {
             display: none;
             position: fixed;
@@ -53,7 +47,6 @@
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         }
-        /* Fixed button style */
         #sourceButton {
             position: fixed;
             bottom: 20px;
@@ -77,10 +70,9 @@
 <body class="p-4 md:p-8">
 
     <div class="max-w-6xl mx-auto">
-        <!-- HEADER WITH EXAMPLE BUTTON -->
         <div class="flex items-center justify-between mb-6 border-b border-gray-700 pb-2">
             <h1 class="text-3xl font-bold text-green-400">
-                Egg Cost Tool (Coordinate Tracking)
+                Tower Cost Tool (Coordinate Tracking)
             </h1>
             <button id="exampleButton" onclick="openExampleModal()" class="px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-bold transition duration-200 flex items-center shadow-md shadow-purple-900/50">
                 <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.523 5.754 18 7.5 18s3.332.477 4.5 1.247m0-13C13.168 5.477 14.754 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.523 18.246 18 16.5 18s-3.332.477-4.5 1.247"></path></svg>
@@ -89,7 +81,7 @@
         </div>
         
         <p class="text-gray-400 mb-6">
-            This tool now tracks towers using their **X, Z coordinates** to accurately determine upgrade levels and replace costs.
+            This tool tracks towers using their **X, Z coordinates** to accurately determine upgrade levels and replace costs.
             <br>
             **Supported cost formats:**
             <ul class="list-disc list-inside ml-4 mt-2 text-sm text-gray-300">
@@ -97,17 +89,23 @@
                 <li>Upgrade: `upgrade(X, Y, Z, cost)`</li>
             </ul>
             <p class="text-xs text-red-300 mt-2">
-                ⚠️ **Note:** We use the X and Z coordinates (rounded to 2 decimal places) from the `place` call as the unique identifier for each tower, ensuring upgrades are correctly applied even if the Y coordinate changes.
+                ⚠️ **Note:** We use the X and Z coordinates (rounded to 2 decimal places) from the `place` call as the unique identifier for each tower.
             </p>
         </p>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            <!-- Column 1: Input and Settings -->
             <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
                 <h2 class="text-xl font-semibold mb-4 text-yellow-400">📝 Input & Settings</h2>
-
-                <!-- Hardcore Mode Toggle -->
+                
+                <!-- NEW: Golden Perk Selection Button -->
+                <div class="flex items-center justify-between mb-4 p-3 bg-gray-700 rounded-lg border border-yellow-500/50">
+                    <span class="text-lg font-bold text-yellow-400">Golden Perk Selection</span>
+                    <button onclick="openGoldenPerkModal()" class="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 rounded-lg text-white font-bold transition duration-200">
+                        Select Loadout
+                    </button>
+                </div>
+                
                 <div class="flex items-center justify-between mb-4 p-3 bg-gray-700 rounded-lg border border-red-500/50">
                     <label for="hardcoreMode" class="text-lg font-bold text-red-400 flex items-center">
                         <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
@@ -126,15 +124,12 @@ upgrade(-27.768, 3.339, -3.074, cost)' class="w-full p-3 rounded-lg bg-gray-700 
                 <button id="processButton" class="w-full py-3 px-4 bg-green-600 hover:bg-green-700 rounded-lg text-white font-bold transition duration-200 shadow-md shadow-green-900/50">
                     🔍 Lookup & Replace Costs
                 </button>
-                
-                <!-- Removed Duplication Tool -->
             </div>
 
-            <!-- Column 2: Results -->
             <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-semibold text-blue-400">💡 Results (Modified Code)</h2>
-                    <span id="totalCostDisplay" class="text-lg font-bold text-yellow-300">Tổng Chi Phí: 0</span>
+                    <span id="totalCostDisplay" class="text-lg font-bold text-yellow-300">Total Cost: 0</span>
                     <button id="copyButton" onclick="copyOutput()" class="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition duration-200">
                         Copy All
                     </button>
@@ -146,7 +141,6 @@ upgrade(-27.768, 3.339, -3.074, cost)' class="w-full p-3 rounded-lg bg-gray-700 
             </div>
         </div>
 
-        <!-- Tower Placement Cost Table -->
         <div class="mt-8">
             <h2 class="text-xl font-semibold mb-3 text-red-400">⚠️ Tower Placement Costs (Click Tower Name for Upgrade Details)</h2>
             <div class="overflow-x-auto">
@@ -159,19 +153,17 @@ upgrade(-27.768, 3.339, -3.074, cost)' class="w-full p-3 rounded-lg bg-gray-700 
                         </tr>
                     </thead>
                     <tbody id="costTableBody">
-                        <!-- Data populated by JS -->
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
     
-    <!-- Floating Source Button -->
     <div id="sourceButton" onclick="openSourceModal()">
         Source Info
     </div>
 
-    <!-- Modal for Upgrade Costs -->
+    <!-- Tower Upgrade Costs Modal -->
     <div id="upgradeModal" class="modal">
         <div class="modal-content">
             <div class="flex justify-between items-center border-b pb-2 border-gray-600 mb-4">
@@ -187,13 +179,28 @@ upgrade(-27.768, 3.339, -3.074, cost)' class="w-full p-3 rounded-lg bg-gray-700 
                     </tr>
                 </thead>
                 <tbody id="modalTableBody">
-                    <!-- Upgrade data goes here -->
                 </tbody>
             </table>
         </div>
     </div>
+
+    <!-- Golden Perk Selection Modal -->
+    <div id="goldenPerkModal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center border-b pb-2 border-gray-600 mb-4">
+                <h3 class="text-xl font-bold text-yellow-400">Select Golden Perks in Loadout</h3>
+                <button onclick="closeModal('goldenPerkModal')" class="text-gray-400 hover:text-white text-2xl font-bold leading-none">&times;</button>
+            </div>
+            <p class="text-gray-300 mb-4">Select the Golden Towers you are using. Their costs will be used if found in the code.</p>
+            <div id="goldenPerkCheckboxes" class="grid grid-cols-2 gap-4">
+            </div>
+            <button onclick="saveGoldenPerks(); closeModal('goldenPerkModal');" class="mt-6 w-full py-2 px-4 bg-green-600 hover:bg-green-700 rounded-lg text-white font-bold transition duration-200">
+                Apply Selection
+            </button>
+        </div>
+    </div>
     
-    <!-- NEW Modal for Example Strat -->
+    <!-- Example Strat Modal -->
     <div id="exampleModal" class="modal">
         <div class="modal-content max-w-2xl">
             <div class="flex justify-between items-center border-b pb-2 border-gray-600 mb-4">
@@ -212,7 +219,7 @@ upgrade(-27.768, 3.339, -3.074, cost)' class="w-full p-3 rounded-lg bg-gray-700 
         </div>
     </div>
 
-    <!-- Modal for Source Info -->
+    <!-- Source Info Modal -->
     <div id="sourceModal" class="modal">
         <div class="modal-content">
             <div class="flex justify-between items-center border-b pb-2 border-gray-600 mb-4">
@@ -229,7 +236,6 @@ upgrade(-27.768, 3.339, -3.074, cost)' class="w-full p-3 rounded-lg bg-gray-700 
 
 
     <script>
-        // --- TOWER COST DATA ---
         const TOWER_COSTS = {
             "Scout": { "Place": 150, "Upgrade 1": 50, "Upgrade 2": 200, "Upgrade 3": 950, "Upgrade 4": 2500 },
             "Sniper": { "Place": 300, "Upgrade 1": 150, "Upgrade 2": 500, "Upgrade 3": 1500, "Upgrade 4": 4000 },
@@ -265,10 +271,17 @@ upgrade(-27.768, 3.339, -3.074, cost)' class="w-full p-3 rounded-lg bg-gray-700 
             "Necromancer": { "Place": 1650, "Upgrade 1": 1150, "Upgrade 2": 3950, "Upgrade 3": 11320, "Upgrade 4": 44000 },
             "Accelerator": { "Place": 4500, "Upgrade 1": 1000, "Upgrade 2": 2500, "Upgrade 3": 4750, "Upgrade 4": 11250, "Upgrade 5": 36000 },
             "Engineer": { "Place": 600, "Upgrade 1": 350, "Upgrade 2": 550, "Upgrade 3": 2250, "Upgrade 4": 4750, "Upgrade 5": 13500, "Upgrade 6": 35000 },
-            "Hacker": { "Place": 1400, "Upgrade 1": 600, "Upgrade 2": 1250, "Upgrade 3": 7500, "Upgrade 4": 22000 }
+            "Hacker": { "Place": 1400, "Upgrade 1": 600, "Upgrade 2": 1250, "Upgrade 3": 7500, "Upgrade 4": 22000 },
+            "Golden Scout": { "Place": 250, "Upgrade 1": 150, "Upgrade 2": 500, "Upgrade 3": 2325, "Upgrade 4": 5500 },
+            "Golden Cowboy": { "Place": 600, "Upgrade 1": 150, "Upgrade 2": 600, "Upgrade 3": 1750, "Upgrade 4": 4750, "Upgrade 5": 9500 },
+            "Golden Minigunner": { "Place": 3000, "Upgrade 1": 900, "Upgrade 2": 2000, "Upgrade 3": 8500, "Upgrade 4": 30000 },
+            "Golden Soldier": { "Place": 500, "Upgrade 1": 250, "Upgrade 2": 800, "Upgrade 3": 5750, "Upgrade 4": 14500 },
+            "Golden Crook Boss": { "Place": 800, "Upgrade 1": 500, "Upgrade 2": 1500, "Upgrade 3": 6000, "Upgrade 4": 30000 },
+            "Golden Pyromancer": { "Place": 800, "Upgrade 1": 350, "Upgrade 2": 750, "Upgrade 3": 1750, "Upgrade 4": 5750, "Upgrade 5": 9500 }
         };
-
-        // Stores the tower info mapped to its unique coordinate key (X_rounded, Z_rounded)
+        
+        const GOLDEN_VARIANTS = ["Scout", "Cowboy", "Minigunner", "Soldier", "Crook Boss", "Pyromancer"];
+        let selectedGoldenTowers = [];
         let towerCoordsMap = {}; 
         
         let outputTextElement;
@@ -279,25 +292,25 @@ upgrade(-27.768, 3.339, -3.074, cost)' class="w-full p-3 rounded-lg bg-gray-700 
         let modalTableBody;
         let modalTitle;
         let totalCostDisplay;
+        let goldenPerkCheckboxesContainer;
         
-        // --- EXAMPLE CODE (Using the new coordinate format) ---
-        const EXAMPLE_CODE = `place(-23.68, 1.71, -5.15, "Shotgunner", cost)
-place(-37.92, 1.93, -6.67, "Shotgunner", cost)
+        const EXAMPLE_CODE = `place(-23.68, 1.71, -5.15, "Scout", cost)
+place(-37.92, 1.93, -6.67, "Cowboy", cost)
 upgrade(-23.68, 3.06, -5.15, cost)
 upgrade(-37.92, 3.28, -6.67, cost)
 upgrade(-37.92, 3.28, -6.67, cost)
 upgrade(-23.68, 3.06, -5.15, cost)
-place(-27.77, 1.99, -3.07, "Electroshocker", cost)
+place(-27.77, 1.99, -3.07, "Minigunner", cost)
 upgrade(-27.77, 3.34, -3.07, cost)
 upgrade(-27.77, 3.34, -3.07, cost)
 place(-28.76, 1.45, -10.22, "Commander", cost)
-place(-25.70, 1.76, -5.27, "Shotgunner", cost)
+place(-25.70, 1.76, -5.27, "Soldier", cost)
 upgrade(-25.70, 3.11, -5.27, cost)
 upgrade(-25.70, 3.11, -5.27, cost)
-place(-22.80, 1.62, -3.14, "Shotgunner", cost)
+place(-22.80, 1.62, -3.14, "Crook Boss", cost)
 upgrade(-22.80, 2.97, -3.14, cost)
 upgrade(-22.80, 2.97, -3.14, cost)
-place(-24.89, 1.85, -3.23, "Shotgunner", cost)
+place(-24.89, 1.85, -3.23, "Pyromancer", cost)
 upgrade(-24.89, 3.20, -3.23, cost)
 upgrade(-24.89, 3.20, -3.23, cost)
 place(-25.45, 1.62, -0.73, "Freezer", cost)
@@ -313,34 +326,17 @@ upgrade(-22.55, 2.87, -0.97, cost)
 upgrade(-28.76, 3.15, -10.22, cost)
 upgrade(-28.76, 3.15, -10.22, cost)
 upgrade(-28.76, 3.15, -10.22, cost)`;
-        // --- END EXAMPLE CODE ---
 
-        /**
-         * Rounds a coordinate string to 2 decimal places for reliable key generation.
-         */
         const roundCoord = (coordStr) => {
             return parseFloat(coordStr.trim()).toFixed(2);
         };
         
-        /**
-         * Calculates the unique coordinate key (X_rounded, Z_rounded).
-         * @param {string} xStr - X coordinate string.
-         * @param {string} zStr - Z coordinate string.
-         * @returns {string} The unique key "X,Z".
-         */
         const getCoordKey = (xStr, zStr) => {
             return `${roundCoord(xStr)},${roundCoord(zStr)}`;
         }
 
-
-        /**
-         * Calculates the Hardcore Cost (1.5x rounded up to the nearest integer).
-         */
         const getHardcoreCost = (baseCost) => Math.ceil(baseCost * 1.5); 
 
-        /**
-         * Looks up the cost based on tower name and type (Place or Upgrade X).
-         */
         function lookupCost(towerName, costType, isHardcore) {
             const towerData = TOWER_COSTS[towerName];
             if (!towerData) return null;
@@ -351,40 +347,20 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
             return isHardcore ? getHardcoreCost(baseCost) : baseCost;
         }
         
-        // Regex for place(X, Y, Z, "TowerName", cost)
         const getPlaceRegex = () => {
-             // G1: Full prefix including 'place('
-             // G2: X
-             // G3: Y
-             // G4: Z
-             // G5: Tower Name
-             // G6: Cost Placeholder (cost or "cost" or number)
-             // G7: Suffix/End
              return /(\s*place\s*\()([^,]+),\s*([^,]+),\s*([^,]+),\s*["']([^"']+)["'],\s*["']?([cC][oO][sS][t]|\d+)'?(\s*\))/i;
         };
 
-        // Regex for upgrade(X, Y, Z, cost)
         const getUpgradeRegex = () => {
-             // G1: Full prefix including 'upgrade('
-             // G2: X
-             // G3: Y
-             // G4: Z
-             // G5: Cost Placeholder (cost or "cost" or number)
-             // G6: Suffix/End
             return /(\s*upgrade\s*\()([^,]+),\s*([^,]+),\s*([^,]+),\s*["']?([cC][oO][sS][t]|\d+)'?(\s*\))/i;
         };
 
-
-        /**
-         * Pre-scans the input code to map the unique (X, Z) coordinates of place commands to the tower name.
-         */
         function preProcessPlaceCommands(inputCode) {
             towerCoordsMap = {};
             const placeRegex = getPlaceRegex();
             const lines = inputCode.split('\n');
-
+            
             lines.forEach(line => {
-                // Only process lines that contain the place function call and are not commented out
                 if (line.toLowerCase().includes('place(') && !line.trim().startsWith('--') && !line.trim().startsWith('//')) {
                     
                     const placeMatch = line.match(placeRegex);
@@ -392,12 +368,15 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
                     if (placeMatch) {
                         const xStr = placeMatch[2];
                         const zStr = placeMatch[4];
-                        const towerName = placeMatch[5].trim();
+                        let towerName = placeMatch[5].trim(); 
+                        
+                        if (selectedGoldenTowers.includes(towerName)) {
+                            towerName = `Golden ${towerName}`;
+                        }
                         
                         const key = getCoordKey(xStr, zStr);
 
                         if (towerName && !towerCoordsMap[key]) {
-                            // Map the unique X,Z coordinates to tower data, initialize upgrade level
                             towerCoordsMap[key] = {
                                 towerName: towerName,
                                 upgradeLevel: 0
@@ -408,22 +387,17 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
             });
         }
 
-        /**
-         * The main function to process the input code string.
-         */
         function processCode(inputCode, isHardcore) {
             
             if (inputCode.trim() === '') {
-                 return { outputCode: "❌ LỖI: Đầu vào không được để trống.", totalCost: 0 };
+                 return { outputCode: "❌ ERROR: Input cannot be empty.", totalCost: 0 };
             }
 
-            // Step 1: Pre-process the code to map unique X,Z coordinates to tower names
             preProcessPlaceCommands(inputCode);
             
             let outputCode = '';
             let totalCost = 0; 
             
-            // Create a temporary, writable copy of the map for upgrade tracking during processing
             const activeTowerTracker = JSON.parse(JSON.stringify(towerCoordsMap));
 
             const placeRegex = getPlaceRegex();
@@ -432,34 +406,28 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
             const lines = inputCode.split('\n');
 
             lines.forEach(line => {
-                // Skip comments but include them in output to preserve the original script structure
                 if (line.trim().startsWith('--') || line.trim().startsWith('//')) {
                     outputCode += line + '\n';
                     return;
                 }
                 
                 let processedLine = line;
-                let costReplaced = false;
 
-                // --- 1. PROCESS place(X, Y, Z, "TowerName", cost) ---
                 if (line.toLowerCase().includes('place(')) {
                     const placeMatch = line.match(placeRegex);
                     
                     if (placeMatch) {
                         const xStr = placeMatch[2];
                         const zStr = placeMatch[4];
-                        const towerName = placeMatch[5].trim(); 
-                        
-                        // Use the key derived from the X, Z coords
                         const key = getCoordKey(xStr, zStr);
+                        const towerName = activeTowerTracker[key] ? activeTowerTracker[key].towerName : placeMatch[5].trim();
+
                         const finalCost = lookupCost(towerName, "Place", isHardcore);
                         
                         processedLine = line.replace(placeRegex, (match, prefix, x, y, z, name, costPlaceholder, endSuffix) => {
                              if (finalCost !== null) {
                                 totalCost += finalCost; 
-                                costReplaced = true;
-                                // Return the full line with the cost placeholder (G6) replaced by the numeric cost
-                                return `${prefix}${x}, ${y}, ${z}, "${name}", ${finalCost}${endSuffix}`;
+                                return `${prefix}${x}, ${y}, ${z}, "${placeMatch[5].trim()}", ${finalCost}${endSuffix}`;
                             } else {
                                 console.warn(`[Place] Tower name not found or cost missing: ${towerName}`);
                                 return match; 
@@ -468,21 +436,16 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
                     }
                 }
 
-                // --- 2. PROCESS upgrade(X, Y, Z, cost) ---
                 else if (line.toLowerCase().includes('upgrade(')) {
                     const upgradeMatch = line.match(upgradeRegex);
 
                     if (upgradeMatch) {
-                        
                         const xStr = upgradeMatch[2];
                         const zStr = upgradeMatch[4];
-                        
-                        // Use the key derived from the X, Z coords for lookup
                         const key = getCoordKey(xStr, zStr);
                         const towerInfo = activeTowerTracker[key];
                         
                         if (towerInfo) {
-                            // Increment counter for this tower
                             towerInfo.upgradeLevel++;
                             const currentLevel = towerInfo.upgradeLevel;
                             
@@ -492,15 +455,12 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
                             
                             if (finalCost !== null) {
                                 totalCost += finalCost; 
-                                costReplaced = true;
                                 
                                 processedLine = line.replace(upgradeRegex, (match, prefix, x, y, z, costPlaceholder, endSuffix) => {
-                                    // Replace the cost placeholder (G5) with the numeric cost
                                     return `${prefix}${x}, ${y}, ${z}, ${finalCost}${endSuffix}`;
                                 });
 
                             } else {
-                                // Max level reached or cost not defined. Revert counter and warn.
                                 console.warn(`[Upgrade] Max level reached or cost not defined for ${towerName} at X:${roundCoord(xStr)}, Z:${roundCoord(zStr)} (Level ${currentLevel}). Skipping.`);
                                 towerInfo.upgradeLevel--; 
                             }
@@ -516,7 +476,7 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
             const costModeText = isHardcore ? "Hardcore" : "Normal";
             
             if (outputCode.trim() === '') {
-                 return { outputCode: "❌ LỖI: Không tìm thấy lệnh hợp lệ nào trong đầu vào.", totalCost: 0 };
+                 return { outputCode: "❌ ERROR: No valid commands found in input.", totalCost: 0 };
             }
 
             return {
@@ -526,11 +486,6 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
             };
         }
         
-        // --- CLIPBOARD FUNCTIONALITY (Same as before) ---
-
-        /**
-         * Fallback mechanism using document.execCommand('copy')
-         */
         function fallbackCopy(text, button, originalText) {
             const tempTextArea = document.createElement('textarea');
             tempTextArea.value = text;
@@ -565,21 +520,17 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
             document.body.removeChild(tempTextArea);
         }
         
-        /**
-         * Copies the content of the outputText pre element to the clipboard.
-         */
         function copyOutput() {
             const textToCopy = outputTextElement.textContent;
             const copyButton = document.getElementById('copyButton');
             const originalText = 'Copy All';
 
-            if (textToCopy.includes("Paste your code") || textToCopy.includes("LỖI")) {
+            if (textToCopy.includes("Paste your code") || textToCopy.includes("ERROR")) {
                  copyButton.textContent = 'No code to copy!';
                  setTimeout(() => { copyButton.textContent = originalText; }, 2000);
                  return;
             }
 
-            // 1. Try modern clipboard API
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(textToCopy)
                     .then(() => {
@@ -589,53 +540,57 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
                         }, 1500);
                     })
                     .catch(err => {
-                        // 2. Fallback
                         fallbackCopy(textToCopy, copyButton, originalText);
                     });
             } else {
-                // 2. Fallback for old browsers/iframe
                 fallbackCopy(textToCopy, copyButton, originalText);
             }
         }
 
-        // --- UI & EVENT HANDLERS (Same as before) ---
-        
-        /**
-         * Opens the Pizza Party Strat Example modal.
-         */
         function openExampleModal() {
             document.getElementById('exampleCodeText').textContent = EXAMPLE_CODE;
             document.getElementById('exampleModal').style.display = 'block';
         }
 
-        /**
-         * Loads the example code into the input textarea.
-         */
         function loadExample() {
             inputCodeTextarea.value = EXAMPLE_CODE;
-            // Automatically process the code after loading the example
             processButton.click();
         }
 
-        /**
-         * Fills the main cost table with placement costs.
-         */
         function populateCostTable() {
             costTableBody.innerHTML = '';
             const isHardcore = hardcoreModeCheckbox.checked;
 
-            const sortedTowerNames = Object.keys(TOWER_COSTS).sort();
+            const allTowerNames = Object.keys(TOWER_COSTS).filter(name => !name.startsWith("Golden "));
+            const sortedTowerNames = allTowerNames.sort();
 
             sortedTowerNames.forEach(name => {
-                const normalCost = TOWER_COSTS[name]["Place"];
+                let lookupName = name;
+                let isGoldenVariant = false; 
+
+                if (selectedGoldenTowers.includes(name)) {
+                    if (TOWER_COSTS[`Golden ${name}`]) {
+                         lookupName = `Golden ${name}`;
+                         isGoldenVariant = true;
+                    }
+                }
+
+                const towerData = TOWER_COSTS[lookupName];
+                
+                if (!towerData) return; 
+
+                const normalCost = towerData["Place"];
                 const hardcoreCost = getHardcoreCost(normalCost);
 
+                const displayTowerName = isGoldenVariant ? `⭐ ${name} (Golden)` : name;
+                const colorClass = isGoldenVariant ? 'text-yellow-300' : 'text-green-300';
+                
                 const row = document.createElement('tr');
                 row.className = 'border-t border-gray-700 hover:bg-gray-700 cursor-pointer';
-                row.setAttribute('onclick', `showUpgradeCosts('${name}', ${isHardcore})`);
+                row.setAttribute('onclick', `showUpgradeCosts('${lookupName}', ${isHardcore})`);
 
                 row.innerHTML = `
-                    <td class="p-2 text-left font-semibold text-green-300">${name}</td>
+                    <td class="p-2 text-left font-semibold ${colorClass}">${displayTowerName}</td>
                     <td class="p-2 text-right">${normalCost.toLocaleString()}</td>
                     <td class="p-2 text-right text-red-400">${hardcoreCost.toLocaleString()}</td>
                 `;
@@ -643,9 +598,6 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
             });
         }
 
-        /**
-         * Shows the modal with detailed upgrade costs for a selected tower.
-         */
         function showUpgradeCosts(towerName, isHardcore) {
             modalTitle.textContent = `${towerName} - Upgrade Costs (${isHardcore ? 'Hardcore' : 'Normal'})`;
             modalTableBody.innerHTML = '';
@@ -675,23 +627,55 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
             document.getElementById('upgradeModal').style.display = 'block';
         }
 
-        /**
-         * General function to close any modal.
-         */
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
         }
 
-        /**
-         * Opens the Source Info modal.
-         */
         function openSourceModal() {
             document.getElementById('sourceModal').style.display = 'block';
         }
 
+        function populateGoldenPerkCheckboxes() {
+            goldenPerkCheckboxesContainer.innerHTML = '';
+            GOLDEN_VARIANTS.forEach(tower => {
+                const isChecked = selectedGoldenTowers.includes(tower);
+                const inputId = `golden-${tower.replace(/\s/g, '-')}`;
+                
+                const html = `
+                    <div class="flex items-center">
+                        <input id="${inputId}" type="checkbox" data-tower-name="${tower}" 
+                            ${isChecked ? 'checked' : ''}
+                            class="w-4 h-4 text-yellow-500 bg-gray-900 border-gray-600 rounded focus:ring-yellow-500">
+                        <label for="${inputId}" class="ml-2 text-sm font-medium text-white">${tower}</label>
+                    </div>
+                `;
+                goldenPerkCheckboxesContainer.innerHTML += html;
+            });
+        }
+        
+        function openGoldenPerkModal() {
+            populateGoldenPerkCheckboxes();
+            document.getElementById('goldenPerkModal').style.display = 'block';
+        }
+        
+        function saveGoldenPerks() {
+            selectedGoldenTowers = [];
+            const checkboxes = goldenPerkCheckboxesContainer.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    selectedGoldenTowers.push(checkbox.getAttribute('data-tower-name'));
+                }
+            });
+
+            if(inputCodeTextarea.value.trim() !== "") {
+                processButton.click();
+            } else {
+                populateCostTable();
+            }
+        }
+
 
         window.onload = function() {
-            // Get DOM references
             outputTextElement = document.getElementById('outputText');
             processButton = document.getElementById('processButton');
             hardcoreModeCheckbox = document.getElementById('hardcoreMode');
@@ -699,21 +683,21 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
             costTableBody = document.getElementById('costTableBody');
             modalTableBody = document.getElementById('modalTableBody');
             modalTitle = document.getElementById('modalTitle');
-            totalCostDisplay = document.getElementById('totalCostDisplay'); // New reference
+            totalCostDisplay = document.getElementById('totalCostDisplay'); 
+            goldenPerkCheckboxesContainer = document.getElementById('goldenPerkCheckboxes');
             
-            // Set up Event Listeners
             processButton.addEventListener('click', () => {
                 const inputCode = inputCodeTextarea.value;
                 const isHardcore = hardcoreModeCheckbox.checked;
                 const result = processCode(inputCode, isHardcore);
                 
-                // Update output code and total cost display
                 outputTextElement.textContent = result.outputCode;
                 
                 if (result.totalCost > 0) {
-                    totalCostDisplay.textContent = `Tổng Chi Phí (${result.costMode}): ${result.totalCost.toLocaleString()}`;
+                    const goldenText = selectedGoldenTowers.length > 0 ? ` (Golden: ${selectedGoldenTowers.length})` : "";
+                    totalCostDisplay.textContent = `Total Cost (${result.costMode}${goldenText}): ${result.totalCost.toLocaleString()}`;
                 } else {
-                    totalCostDisplay.textContent = `Tổng Chi Phí: 0`;
+                    totalCostDisplay.textContent = `Total Cost: 0`;
                 }
                 
                 populateCostTable(); 
@@ -721,14 +705,11 @@ upgrade(-28.76, 3.15, -10.22, cost)`;
 
             hardcoreModeCheckbox.addEventListener('change', populateCostTable);
             hardcoreModeCheckbox.addEventListener('change', () => {
-                // When Hardcore mode changes, re-process the code to update the total cost
                 if(inputCodeTextarea.value.trim() !== "") {
                     processButton.click();
                 }
             });
 
-
-            // Initial population of the cost table
             populateCostTable();
         };
 
